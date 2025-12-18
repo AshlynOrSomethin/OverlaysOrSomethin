@@ -1,67 +1,49 @@
-# Copyright 2025
-# Distributed under the terms of the GNU General Public License v3
-
 EAPI=8
 
 inherit desktop
 
-DESCRIPTION="Equibop is a fork of Vesktop."
+DESCRIPTION="Equibop is a fork of Vesktop (prebuilt Linux bundle)."
 HOMEPAGE="https://github.com/Equicord/Equibop"
-SRC_URI="https://github.com/Equicord/Equibop/archive/refs/tags/v${PV}.tar.gz -> ${P}.tar.gz"
+# Prebuilt x86_64 Linux tarball from the release assets
+SRC_URI="https://github.com/Equicord/Equibop/releases/download/v${PV}/equibop-${PV}.tar.gz
+	-> ${P}.tar.gz"
 
 LICENSE="GPL-3"
 SLOT="0"
-# Use amd64 for stable in your overlay; change to ~amd64 if you prefer testing
 KEYWORDS="amd64"
 
-# Building needs network for npm/bun fetches unless upstream vendors deps
-# If your build works fully offline after 'bun install', you can drop this.
-RESTRICT="network-sandbox"
+# No build tools needed; we just install the prebuilt bundle.
+RESTRICT="strip"
 
-# Build-time deps. Node is not needed if build uses bun only.
-BDEPEND="
-  net-libs/bun-bin
-"
-
-# Add runtime deps if needed by the app; most Electron-style bundles are self-contained
+# No build-time deps
+BDEPEND=""
 RDEPEND=""
 
-S="${WORKDIR}/Equibop-${PV}"
-
-# If upstream requires environment vars, set them here
-# For reproducibility, avoid writing to $HOME
-PATCHES=()
-
-src_prepare() {
-  default
-  # Install JS deps with Bun. --no-progress to quiet logs inside Portage.
-  # If upstream provides a lockfile, keep --frozen-lockfile.
-  bun install --frozen-lockfile --no-progress || die "bun install failed"
-}
+# The tarball extracts into linux-unpacked with the binary 'equibop'
+S="${WORKDIR}"
 
 src_compile() {
-  # Upstream build script
-  bun run scripts/build/build.mts || die "build script failed"
-
-  # Verify expected output exists; adjust the path if upstream changes it.
-  if [[ ! -x dist/linux-unpacked/equibop && ! -f dist/linux-unpacked/equibop ]]; then
-    die "expected build output 'dist/linux-unpacked/equibop' not found"
-  fi
+	: # nothing to build
 }
 
 src_install() {
-  # Install application under /opt/equibop
-  insinto /opt/equibop
-  doins -r dist/linux-unpacked || die "installing linux-unpacked failed"
+	# Install under /opt/equibop
+	insinto /opt/equibop
+	# The archive contains linux-unpacked/
+	doins -r linux-unpacked || die "missing linux-unpacked in tarball"
+	fperms +x /opt/equibop/linux-unpacked/equibop
 
-  # Ensure binary is executable
-  fperms +x /opt/equibop/linux-unpacked/equibop
+	# Icon and desktop entry
+	# Icon is inside resources of the app; fallback to static if present
+	if [[ -f linux-unpacked/resources/app/static/icon.png ]]; then
+		newicon linux-unpacked/resources/app/static/icon.png equibop.png
+	elif [[ -f static/icon.png ]]; then
+		newicon static/icon.png equibop.png
+	fi
 
-  # Icons/desktop entry
-  newicon static/icon.png equibop.png
-  make_desktop_entry /opt/equibop/linux-unpacked/equibop "Equibop" equibop \
-    "Network;Chat;InstantMessaging;"
+	make_desktop_entry /opt/equibop/linux-unpacked/equibop "Equibop" equibop \
+		"Network;Chat;InstantMessaging;"
 
-  # Convenience symlink
-  dosym /opt/equibop/linux-unpacked/equibop /usr/bin/equibop
+	# CLI convenience
+	dosym /opt/equibop/linux-unpacked/equibop /usr/bin/equibop
 }
