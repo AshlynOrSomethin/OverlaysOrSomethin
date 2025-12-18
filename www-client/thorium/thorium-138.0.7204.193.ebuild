@@ -520,9 +520,10 @@ src_prepare() {
 	else
 		setup_arg=""
 	fi
-	mkdir -p "\({THORIUM_WD}/logos" || die
+	mkdir -p "${THORIUM_WD}/logos" || die
     cp "${DISTDIR}/thorium_ascii_art.txt" "${THORIUM_WD}/logos/thorium_ascii_art.txt" || die
-	CR_DIR="${S}" "${THORIUM_WD}/setup.sh" ${setup_arg} || die
+    sed -i 's@^\s*cat\s\+./logos/thorium_ascii_art.txt.*@: # skipped in Gentoo@' "${THORIUM_WD}/setup.sh" || die
+    CR_DIR="${S}" "${THORIUM_WD}/setup.sh" ${setup_arg} || die
 	if [[ -z ${setup_arg} ]]; then
 		sed -i "s|other/ffmpeg_hevc_ac3.patch|${THORIUM_WD}/other/ffmpeg_hevc_ac3.patch|" "${THORIUM_WD}/patch_ac3.sh" || die
 		CR_DIR="${S}" "${THORIUM_WD}/patch_ac3.sh" || die
