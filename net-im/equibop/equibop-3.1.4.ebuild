@@ -7,7 +7,7 @@ HOMEPAGE="https://github.com/Equicord/Equibop"
 SRC_URI="https://github.com/Equicord/Equibop/archive/refs/tags/v${PV}.tar.gz -> ${P}.tar.gz"
 LICENSE="GPL-3"
 SLOT="0"
-KEYWORDS="~amd64"
+#KEYWORDS="~amd64"
 RESTRICT=network-sandbox
 
 BDEPEND="net-libs/nodejs[npm]"
