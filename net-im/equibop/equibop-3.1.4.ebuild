@@ -6,7 +6,6 @@ DESCRIPTION="Equibop (prebuilt Linux x86_64 bundle)."
 HOMEPAGE="https://github.com/Equicord/Equibop"
 # MUST be the Releases asset, not the source archive
 SRC_URI="https://github.com/Equicord/Equibop/releases/download/v${PV}/equibop-${PV}.tar.gz -> ${P}.tar.gz"
-
 LICENSE="GPL-3"
 SLOT="0"
 KEYWORDS="amd64"
