@@ -2,48 +2,35 @@ EAPI=8
 
 inherit desktop
 
-DESCRIPTION="Equibop is a fork of Vesktop (prebuilt Linux bundle)."
+DESCRIPTION="Equibop is a fork of Vesktop (prebuilt Linux x86_64 bundle)."
 HOMEPAGE="https://github.com/Equicord/Equibop"
-# Prebuilt x86_64 Linux tarball from the release assets
-SRC_URI="https://github.com/Equicord/Equibop/releases/download/v${PV}/equibop-${PV}.tar.gz
-	-> ${P}.tar.gz"
+# IMPORTANT: This is the prebuilt Linux x86_64 tarball from Releases (not source code)
+SRC_URI="https://github.com/Equicord/Equibop/releases/download/v${PV}/equibop-${PV}.tar.gz -> ${P}.tar.gz"
 
 LICENSE="GPL-3"
 SLOT="0"
 KEYWORDS="amd64"
-
-# No build tools needed; we just install the prebuilt bundle.
 RESTRICT="strip"
 
-# No build-time deps
-BDEPEND=""
-RDEPEND=""
+S=${WORKDIR}
 
-# The tarball extracts into linux-unpacked with the binary 'equibop'
-S="${WORKDIR}"
-
-src_compile() {
-	: # nothing to build
-}
+src_compile() { :; }
 
 src_install() {
-	# Install under /opt/equibop
+	# This prebuilt tar extracts to linux-unpacked/ with the 'equibop' binary
+	if [[ ! -d ${S}/linux-unpacked ]]; then
+		die "Expected linux-unpacked/ in release tarball; got: $(ls -1 ${S})"
+	fi
 	insinto /opt/equibop
-	# The archive contains linux-unpacked/
-	doins -r linux-unpacked || die "missing linux-unpacked in tarball"
+	doins -r linux-unpacked || die "installing linux-unpacked failed"
+
 	fperms +x /opt/equibop/linux-unpacked/equibop
 
-	# Icon and desktop entry
-	# Icon is inside resources of the app; fallback to static if present
+	# Icon path inside bundle
 	if [[ -f linux-unpacked/resources/app/static/icon.png ]]; then
 		newicon linux-unpacked/resources/app/static/icon.png equibop.png
-	elif [[ -f static/icon.png ]]; then
-		newicon static/icon.png equibop.png
 	fi
 
-	make_desktop_entry /opt/equibop/linux-unpacked/equibop "Equibop" equibop \
-		"Network;Chat;InstantMessaging;"
-
-	# CLI convenience
 	dosym /opt/equibop/linux-unpacked/equibop /usr/bin/equibop
+	make_desktop_entry /usr/bin/equibop "Equibop" equibop "Network;Chat;InstantMessaging;"
 }
