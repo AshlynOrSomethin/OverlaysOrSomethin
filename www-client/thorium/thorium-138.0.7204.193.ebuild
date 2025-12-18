@@ -121,7 +121,7 @@ S="${WORKDIR}/chromium-${PV}"
 
 LICENSE="BSD"
 SLOT="0"
-KEYWORDS="~amd64"
+KEYWORDS="amd64"
 IUSE_SYSTEM_LIBS="av1 brotli crc32c double-conversion ffmpeg +harfbuzz +icu jsoncpp +libevent +libusb libvpx +openh264 openjpeg +png re2 snappy woff2 +zstd"
 IUSE="+X bluetooth cfi convert-dict cups cpu_flags_arm_neon custom-cflags debug enable-driver gtk4 hangouts headless hevc kerberos lto libcxx nvidia +official +optimize-webui pax-kernel +pgo +proprietary-codecs pulseaudio qt6 screencast selinux test ungoogled vaapi wayland widevine cpu_flags_ppc_vsx3"
 
