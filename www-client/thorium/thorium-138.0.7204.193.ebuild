@@ -633,9 +633,6 @@ src_prepare() {
 		done
 	fi
 
-	einfo "Reverting chromium-84fcdd0620a72aa73ea521c682fb246067f2c14d.patch"
-	eapply "${FILESDIR}/chromium-revert-84fcdd0620a72aa73ea521c682fb246067f2c14d.patch"
-
 	einfo "Applying perfetto-acc24608c84d2d2d8d684f40a110d0a6f4eddc51.patch"
 	pushd third_party/perfetto
 	eapply "${FILESDIR}/perfetto-acc24608c84d2d2d8d684f40a110d0a6f4eddc51.patch"
