@@ -534,27 +534,27 @@ src_prepare() {
 		"/\"GlobalMediaControlsCastStartStop\"/,+4{s/ENABLED/DISABLED/;}" \
 		"chrome/browser/media/router/media_router_feature.cc"
 
-	local PATCHES=(
-		"${FILESDIR}/chromium-cross-compile.patch"
-		"${FILESDIR}/chromium-109-system-openh264.patch"
-		"${FILESDIR}/chromium-109-system-zlib.patch"
-		"${FILESDIR}/chromium-111-InkDropHost-crash.patch"
-		"${FILESDIR}/chromium-126-oauth2-client-switches.patch"
-		"${FILESDIR}/chromium-125-cloud_authenticator.patch"
-		"${FILESDIR}/chromium-123-qrcode.patch"
-		"${FILESDIR}/perfetto-system-zlib.patch"
-		"${FILESDIR}/chromium-127-cargo_crate.patch"
-		"${FILESDIR}/chromium-127-crabby.patch"
-		"${FILESDIR}/chromium-128-gtk-fix-prefers-color-scheme-query.patch"
-		"${FILESDIR}/chromium-130-fontations.patch"
-		"${FILESDIR}/chromium-132-no-link-builtins.patch"
-		"${FILESDIR}/chromium-132-mold.patch"
-		"${FILESDIR}/chromium-134-qt5-optional.patch"
-		"${FILESDIR}/chromium-130-fix-includes.patch" # https://github.com/Alex313031/thorium/issues/978
-		"${FILESDIR}/chromium-130-fix-building-without-tflite-lib.patch" # https://github.com/Alex313031/thorium/issues/978
-		"${FILESDIR}/chromium-135-gperf.patch"
-		"${FILESDIR}/chromium-137-fix-for-kde.patch"
-	)
+	#local PATCHES=(
+		#"${FILESDIR}/chromium-cross-compile.patch"
+		#"${FILESDIR}/chromium-109-system-openh264.patch"
+		#"${FILESDIR}/chromium-109-system-zlib.patch"
+		#"${FILESDIR}/chromium-111-InkDropHost-crash.patch"
+		#"${FILESDIR}/chromium-126-oauth2-client-switches.patch"
+		#"${FILESDIR}/chromium-125-cloud_authenticator.patch"
+		#"${FILESDIR}/chromium-123-qrcode.patch"
+		#"${FILESDIR}/perfetto-system-zlib.patch"
+		#"${FILESDIR}/chromium-127-cargo_crate.patch"
+		#"${FILESDIR}/chromium-127-crabby.patch"
+		#"${FILESDIR}/chromium-128-gtk-fix-prefers-color-scheme-query.patch"
+		#"${FILESDIR}/chromium-130-fontations.patch"
+		#"${FILESDIR}/chromium-132-no-link-builtins.patch"
+		#"${FILESDIR}/chromium-132-mold.patch"
+		#"${FILESDIR}/chromium-134-qt5-optional.patch"
+		#"${FILESDIR}/chromium-130-fix-includes.patch" # https://github.com/Alex313031/thorium/issues/978
+		#"${FILESDIR}/chromium-130-fix-building-without-tflite-lib.patch" # https://github.com/Alex313031/thorium/issues/978
+		#"${FILESDIR}/chromium-135-gperf.patch"
+		#"${FILESDIR}/chromium-137-fix-for-kde.patch"
+	#)
 
 	shopt -s globstar nullglob
 	# 130: moved the PPC64 patches into the chromium-patches repo
