@@ -20,7 +20,7 @@ RESTRICT="network-sandbox"
 
 # Build-time deps. Node is not needed if build uses bun only.
 BDEPEND="
-  dev-lang/bun
+  net-libs/bun-bin
 "
 
 # Add runtime deps if needed by the app; most Electron-style bundles are self-contained
