@@ -77,6 +77,7 @@ SRC_URI="https://github.com/AshlynOrSomethin/gentoo-chromium-source-tarball/rele
 	ungoogled? ( https://github.com/ungoogled-software/ungoogled-chromium/archive/${UGC_PVR}.tar.gz -> ${UGC_PF}.tar.gz )
 	thorium-libjxl? ( https://github.com/Alex313031/thorium-libjxl/archive/${T_LIBJXL_COMMIT_ID}.tar.gz -> ${T_LIBJXL_PF}.tar.gz )
 	thorium-shell? ( https://chromium-fonts.storage.googleapis.com/${TEST_FONT} -> chromium-testfonts-${TEST_FONT:0:10}.tar.gz )
+	https://raw.githubusercontent.com/Alex313031/thorium/refs/heads/main/logos/thorium_ascii_art.txt -> thorium_ascii_art.txt
 "
 
 declare -A CHROMIUM_COMMITS=(
@@ -519,6 +520,8 @@ src_prepare() {
 	else
 		setup_arg=""
 	fi
+	mkdir -p "\({THORIUM_WD}/logos" || die
+    cp "\){DISTDIR}/thorium_ascii_art.txt" "${THORIUM_WD}/logos/thorium_ascii_art.txt" || die
 	CR_DIR="${S}" "${THORIUM_WD}/setup.sh" ${setup_arg} || die
 	if [[ -z ${setup_arg} ]]; then
 		sed -i "s|other/ffmpeg_hevc_ac3.patch|${THORIUM_WD}/other/ffmpeg_hevc_ac3.patch|" "${THORIUM_WD}/patch_ac3.sh" || die
