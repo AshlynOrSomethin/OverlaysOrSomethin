@@ -24,6 +24,7 @@ inherit python-any-r1 readme.gentoo-r1 systemd toolchain-funcs xdg-utils
 # UGC_SKIP_PATCHES — space-separated list of patches to skip
 # UGC_KEEP_BINARIES — space-separated list of binaries to keep
 # UGC_SKIP_SUBSTITUTION — space-separated list of files to skip domain substitution
+RESTRICT="mirror"
 
 UGC_SKIP_PATCHES="
 	core/ungoogled-chromium/disable-privacy-sandbox.patch \
@@ -54,7 +55,7 @@ UGC_SKIP_PATCHES="
 DESCRIPTION="Chromium fork focused on high performance and security"
 HOMEPAGE="https://thorium.rocks"
 PPC64_HASH="a85b64f07b489b8c6fdb13ecf79c16c56c560fc6"
-PATCH_V="${PV%%\.*}-2"
+PATCH_V="${PV%%\.*}-1"
 THORIUM_COMMIT_ID="6a89d88a334d8df585ce07f9a56254ef85fc8956"
 THORIUM_WD="${WORKDIR}/thorium-${THORIUM_COMMIT_ID}"
 UGC_PVR="130.0.6723.116-1"
