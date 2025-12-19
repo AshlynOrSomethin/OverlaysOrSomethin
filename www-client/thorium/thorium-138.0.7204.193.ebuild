@@ -531,7 +531,7 @@ src_prepare() {
 
 	rm "${WORKDIR}/chromium-patches-${PATCH_V}/chromium-138-compiler.patch" || die
 	if ! use custom-cflags; then #See #25 #92
-		sed -i '/default_stack_frames/Q' "${FILESDIR}/chromium-138-compiler.patch" || die
+		sed -i '/default_stack_frames/Q' "${FILESDIR}/chromium-131-compiler.patch" || die
 	fi
 
 	# disable global media controls, crashes with libstdc++
