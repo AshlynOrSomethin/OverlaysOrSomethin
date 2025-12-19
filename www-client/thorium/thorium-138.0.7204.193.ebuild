@@ -531,7 +531,7 @@ src_prepare() {
 
 	rm "${WORKDIR}/chromium-patches-${PATCH_V}/chromium-131-compiler.patch" || die
 	if ! use custom-cflags; then #See #25 #92
-		sed -i '/default_stack_frames/Q' "${FILESDIR}/chromium-131-compiler.patch" || die
+		sed -i '/default_stack_frames/Q' "${FILESDIR}/chromium-138-compiler.patch" || die
 	fi
 
 	# disable global media controls, crashes with libstdc++
@@ -555,7 +555,7 @@ src_prepare() {
 		"${FILESDIR}/chromium-132-no-link-builtins.patch"
 		"${FILESDIR}/chromium-132-mold.patch"
 		"${FILESDIR}/chromium-134-qt5-optional.patch"
-		#"${FILESDIR}/chromium-131-compiler.patch"
+		"${FILESDIR}/chromium-138-compiler.patch"
 		"${FILESDIR}/chromium-130-fix-includes.patch" # https://github.com/Alex313031/thorium/issues/978
 		"${FILESDIR}/chromium-130-fix-building-without-tflite-lib.patch" # https://github.com/Alex313031/thorium/issues/978
 		"${FILESDIR}/chromium-135-gperf.patch"
