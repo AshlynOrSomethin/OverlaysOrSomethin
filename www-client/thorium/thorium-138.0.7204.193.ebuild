@@ -81,16 +81,16 @@ SRC_URI="https://github.com/AshlynOrSomethin/gentoo-chromium-source-tarball/rele
 "
 
 declare -A CHROMIUM_COMMITS=(
-	#["587c2cf8b11d3c32fa26887063eda3171a3d353e"]="third_party/ruy/src"
-	#["dc9db222b929f5da415216134b77d7f3bf141813"]="." #131+
-	#["7e28832cd3320d2b603e6ef9468581e1c65c14f1"]="." #131+
-	#["b51da416e04ecc9edafff531f9678c6404e654b7"]="." #131+
-	#["4c49d7f04f43ab4757637cac21cfef7c0cd060fc"]="." #131+
-	#["47fb59539e5744467eb6f7aae52f5a169910d56c"]="." #131+
-	#["39583ff118920284de516d262979960e7159bcfc"]="." #131+
-	#["c502d310d8cb91f1c1098a7287e75114023e57f0"]="." #131+
-	#["40c273b2c0f5f26e16e67428ceaafd8b339bb61f"]="." #131+
-	#["8739a5b33176e82e06a746163c0c76de4908ced9"]="." #131+
+	["587c2cf8b11d3c32fa26887063eda3171a3d353e"]="third_party/ruy/src"
+	["dc9db222b929f5da415216134b77d7f3bf141813"]="." #131+
+	["7e28832cd3320d2b603e6ef9468581e1c65c14f1"]="." #131+
+	["b51da416e04ecc9edafff531f9678c6404e654b7"]="." #131+
+	["4c49d7f04f43ab4757637cac21cfef7c0cd060fc"]="." #131+
+	["47fb59539e5744467eb6f7aae52f5a169910d56c"]="." #131+
+	["39583ff118920284de516d262979960e7159bcfc"]="." #131+
+	["c502d310d8cb91f1c1098a7287e75114023e57f0"]="." #131+
+	["40c273b2c0f5f26e16e67428ceaafd8b339bb61f"]="." #131+
+	["8739a5b33176e82e06a746163c0c76de4908ced9"]="." #131+
 )
 
 if [ ! -z "${CHROMIUM_COMMITS[*]}" ]; then
@@ -529,32 +529,38 @@ src_prepare() {
 		CR_DIR="${S}" "${THORIUM_WD}/patch_ac3.sh" || die
 	fi
 
+	rm "${WORKDIR}/chromium-patches-${PATCH_V}/chromium-131-compiler.patch" || die
+	if ! use custom-cflags; then #See #25 #92
+		sed -i '/default_stack_frames/Q' "${FILESDIR}/chromium-131-compiler.patch" || die
+	fi
+
 	# disable global media controls, crashes with libstdc++
 	sed -i -e \
 		"/\"GlobalMediaControlsCastStartStop\"/,+4{s/ENABLED/DISABLED/;}" \
 		"chrome/browser/media/router/media_router_feature.cc"
 
-	#local PATCHES=(
-		#"${FILESDIR}/chromium-cross-compile.patch"
-		#"${FILESDIR}/chromium-109-system-openh264.patch"
-		#"${FILESDIR}/chromium-109-system-zlib.patch"
-		#"${FILESDIR}/chromium-111-InkDropHost-crash.patch"
-		#"${FILESDIR}/chromium-126-oauth2-client-switches.patch"
-		#"${FILESDIR}/chromium-125-cloud_authenticator.patch"
-		#"${FILESDIR}/chromium-123-qrcode.patch"
-		#"${FILESDIR}/perfetto-system-zlib.patch"
-		#"${FILESDIR}/chromium-127-cargo_crate.patch"
-		#"${FILESDIR}/chromium-127-crabby.patch"
-		#"${FILESDIR}/chromium-128-gtk-fix-prefers-color-scheme-query.patch"
-		#"${FILESDIR}/chromium-130-fontations.patch"
-		#"${FILESDIR}/chromium-132-no-link-builtins.patch"
-		#"${FILESDIR}/chromium-132-mold.patch"
-		#"${FILESDIR}/chromium-134-qt5-optional.patch"
-		#"${FILESDIR}/chromium-130-fix-includes.patch" # https://github.com/Alex313031/thorium/issues/978
-		#"${FILESDIR}/chromium-130-fix-building-without-tflite-lib.patch" # https://github.com/Alex313031/thorium/issues/978
-		#"${FILESDIR}/chromium-135-gperf.patch"
-		#"${FILESDIR}/chromium-137-fix-for-kde.patch"
-	#)
+	local PATCHES=(
+		"${FILESDIR}/chromium-cross-compile.patch"
+		"${FILESDIR}/chromium-109-system-openh264.patch"
+		"${FILESDIR}/chromium-109-system-zlib.patch"
+		"${FILESDIR}/chromium-111-InkDropHost-crash.patch"
+		"${FILESDIR}/chromium-126-oauth2-client-switches.patch"
+		"${FILESDIR}/chromium-125-cloud_authenticator.patch"
+		"${FILESDIR}/chromium-123-qrcode.patch"
+		"${FILESDIR}/perfetto-system-zlib.patch"
+		"${FILESDIR}/chromium-127-cargo_crate.patch"
+		"${FILESDIR}/chromium-127-crabby.patch"
+		"${FILESDIR}/chromium-128-gtk-fix-prefers-color-scheme-query.patch"
+		"${FILESDIR}/chromium-130-fontations.patch"
+		"${FILESDIR}/chromium-132-no-link-builtins.patch"
+		"${FILESDIR}/chromium-132-mold.patch"
+		"${FILESDIR}/chromium-134-qt5-optional.patch"
+		#"${FILESDIR}/chromium-131-compiler.patch"
+		"${FILESDIR}/chromium-130-fix-includes.patch" # https://github.com/Alex313031/thorium/issues/978
+		"${FILESDIR}/chromium-130-fix-building-without-tflite-lib.patch" # https://github.com/Alex313031/thorium/issues/978
+		"${FILESDIR}/chromium-135-gperf.patch"
+		"${FILESDIR}/chromium-137-fix-for-kde.patch"
+	)
 
 	shopt -s globstar nullglob
 	# 130: moved the PPC64 patches into the chromium-patches repo
@@ -633,10 +639,13 @@ src_prepare() {
 		done
 	fi
 
-	#einfo "Applying perfetto-acc24608c84d2d2d8d684f40a110d0a6f4eddc51.patch"
-	#pushd third_party/perfetto
-	#eapply "${FILESDIR}/perfetto-acc24608c84d2d2d8d684f40a110d0a6f4eddc51.patch"
-	#popd
+	einfo "Reverting chromium-84fcdd0620a72aa73ea521c682fb246067f2c14d.patch"
+	eapply "${FILESDIR}/chromium-revert-84fcdd0620a72aa73ea521c682fb246067f2c14d.patch"
+
+	einfo "Applying perfetto-acc24608c84d2d2d8d684f40a110d0a6f4eddc51.patch"
+	pushd third_party/perfetto
+	eapply "${FILESDIR}/perfetto-acc24608c84d2d2d8d684f40a110d0a6f4eddc51.patch"
+	popd
 
 	if ! use bluetooth ; then
 		PATCHES+=(
