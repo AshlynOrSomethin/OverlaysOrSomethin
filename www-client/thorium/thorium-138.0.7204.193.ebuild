@@ -83,7 +83,6 @@ SRC_URI="https://github.com/AshlynOrSomethin/gentoo-chromium-source-tarball/rele
 declare -A CHROMIUM_COMMITS=(
 	["587c2cf8b11d3c32fa26887063eda3171a3d353e"]="third_party/ruy/src"
 	["dc9db222b929f5da415216134b77d7f3bf141813"]="." #131+
-	["7e28832cd3320d2b603e6ef9468581e1c65c14f1"]="." #131+
 	["47fb59539e5744467eb6f7aae52f5a169910d56c"]="." #131+
 )
 
