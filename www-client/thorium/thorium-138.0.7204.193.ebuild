@@ -82,7 +82,6 @@ SRC_URI="https://github.com/AshlynOrSomethin/gentoo-chromium-source-tarball/rele
 
 declare -A CHROMIUM_COMMITS=(
 	["dc9db222b929f5da415216134b77d7f3bf141813"]="." #131+
-	["47fb59539e5744467eb6f7aae52f5a169910d56c"]="." #131+
 )
 
 if [ ! -z "${CHROMIUM_COMMITS[*]}" ]; then
