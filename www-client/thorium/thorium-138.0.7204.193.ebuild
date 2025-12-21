@@ -195,8 +195,6 @@ COMMON_SNAPSHOT_DEPEND="
 	)
 	sys-libs/zlib:=
 	x11-libs/libdrm:=
-	sys-libs/zlib:=
-	x11-libs/libdrm:=
 	!headless? (
 		dev-libs/glib:2
 		>=media-libs/alsa-lib-1.0.19:=
