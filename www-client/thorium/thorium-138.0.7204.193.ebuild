@@ -943,7 +943,6 @@ src_prepare() {
 		third_party/devtools-frontend/src/front_end/third_party/intl-messageformat
 		third_party/devtools-frontend/src/front_end/third_party/lighthouse
 		third_party/devtools-frontend/src/front_end/third_party/lit
-		third_party/devtools-frontend/src/front_end/third_party/lodash-isequal
 		third_party/devtools-frontend/src/front_end/third_party/marked
 		third_party/devtools-frontend/src/front_end/third_party/puppeteer
 		third_party/devtools-frontend/src/front_end/third_party/puppeteer/package/lib/esm/third_party/mitt
@@ -956,7 +955,6 @@ src_prepare() {
 		third_party/devtools-frontend/src/front_end/third_party/wasmparser
 		third_party/devtools-frontend/src/front_end/third_party/web-vitals
 		third_party/devtools-frontend/src/third_party
-		third_party/distributed_point_functions
 		third_party/dom_distiller_js
 		third_party/eigen3
 		third_party/emoji-segmenter
@@ -976,7 +974,6 @@ src_prepare() {
 		third_party/googletest
 		third_party/highway
 		third_party/hunspell
-		third_party/iccjpeg
 		third_party/inspector_protocol
 		third_party/ipcz
 		third_party/jinja2
@@ -985,12 +982,10 @@ src_prepare() {
 		third_party/jsoncpp
 	)
 	keeplibs+=(
-		third_party/jstemplate
 		third_party/khronos
 		third_party/lens_server_proto
 		third_party/leveldatabase
 		third_party/libaddressinput
-		third_party/libavif
 	)
 	use system-libevent || keeplibs+=(
 		third_party/libevent
@@ -1068,7 +1063,6 @@ src_prepare() {
 		third_party/puffin
 		third_party/pyjson5
 		third_party/pyyaml
-		third_party/qcms
 		third_party/rapidhash
 		third_party/rnnoise
 		third_party/ruy
@@ -1102,7 +1096,6 @@ src_prepare() {
 		third_party/tensorflow_models
 		third_party/tensorflow-text
 		third_party/tflite
-		third_party/tflite/src/third_party/eigen3
 		third_party/tflite/src/third_party/fft2d
 		third_party/tflite/src/third_party/xla/third_party/tsl
 		third_party/tflite/src/third_party/xla/xla/tsl/util
@@ -1124,7 +1117,6 @@ src_prepare() {
 		third_party/webrtc/modules/third_party/fft
 		third_party/webrtc/modules/third_party/g711
 		third_party/webrtc/modules/third_party/g722
-		third_party/webrtc/rtc_base/third_party/base64
 		third_party/webrtc/rtc_base/third_party/sigslot
 		third_party/widevine
 	)
@@ -1139,9 +1131,6 @@ src_prepare() {
 		third_party/zlib/google
 		third_party/zxcvbn-cpp
 		url/third_party/mozilla
-		v8/src/third_party/siphash
-		v8/src/third_party/utf8-decoder
-		v8/src/third_party/valgrind
 		v8/third_party/glibc
 		v8/third_party/inspector_protocol
 		v8/third_party/v8
