@@ -594,7 +594,6 @@ src_prepare() {
 
 	if ! use libcxx ; then
 		PATCHES+=(
-			"${FILESDIR}/font-gc-r2.patch"
 		)
 	fi
 
