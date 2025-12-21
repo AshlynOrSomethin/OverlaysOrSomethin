@@ -547,7 +547,6 @@ src_prepare() {
 		"${FILESDIR}/chromium-127-cargo_crate.patch"
 		"${FILESDIR}/chromium-127-crabby.patch"
 		"${FILESDIR}/chromium-128-gtk-fix-prefers-color-scheme-query.patch"
-		"${FILESDIR}/chromium-130-fontations.patch"
 		"${FILESDIR}/chromium-132-no-link-builtins.patch"
 		"${FILESDIR}/chromium-132-mold.patch"
 		"${FILESDIR}/chromium-134-qt5-optional.patch"
