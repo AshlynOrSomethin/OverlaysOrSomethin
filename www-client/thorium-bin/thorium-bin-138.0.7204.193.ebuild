@@ -61,7 +61,28 @@ src_unpack() {
 }
 
 src_install() {
-  # Install everything from the .deb payload
+  # Prune thorium-shell and content_shell payloads from the unpacked deb tree
+  # Do it before copying to ${D} so Portage never sees them.
+
+  # Binaries/wrappers
+  rm -f usr/bin/thorium-shell || true
+
+  # Desktop entries and appdata
+  rm -f usr/share/applications/thorium-shell.desktop || true
+
+  # Icons/images and shell resources under /opt
+  if [[ -d opt/chromium.org/thorium ]]; then
+    rm -f opt/chromium.org/thorium/thorium_shell || true
+    rm -f opt/chromium.org/thorium/thorium_shell.png || true
+    rm -f opt/chromium.org/thorium/content_shell.pak || true
+    rm -f opt/chromium.org/thorium/shell_resources.pak || true
+    # Any other shell-named files just in case
+    find opt/chromium.org/thorium -maxdepth 1 -type f \
+      \( -name 'thorium_shell*' -o -name 'content_shell*' -o -name 'shell_*' \) \
+      -delete || true
+  fi
+
+  # Now install everything from the .deb payload
   if [[ -d usr ]]; then
     cp -a usr "${D}"/ || die
   fi
@@ -69,17 +90,15 @@ src_install() {
     cp -a opt "${D}"/ || die
   fi
 
-  # Ensure a thorium symlink for convenience if only thorium-browser is present
+  # Ensure a 'thorium' convenience symlink for the browser
   if [[ -x ${D}/usr/bin/thorium-browser && ! -e ${D}/usr/bin/thorium ]]; then
     ln -s thorium-browser "${D}/usr/bin/thorium" || die
   fi
 
-  # Basic perms for bins
+  # Permissions for binaries
   if [[ -d ${D}/usr/bin ]]; then
     find "${D}/usr/bin" -type f -executable -exec chmod 0755 {} + || die
   fi
-
-  # Post-install caches handled in pkg_postinst/pkg_postrm
 }
 
 pkg_postinst() {
