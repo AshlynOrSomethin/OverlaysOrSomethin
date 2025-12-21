@@ -44,12 +44,15 @@ src_prepare() {
 }
 
 python_install_all() {
-  # Install license
-  dodoc -r README* CHANGELOG* || die
-  dodoc LICENSE || die
+  # Docs: install only if present
+  [[ -e README ]]      && dodoc README
+  [[ -e README.md ]]   && dodoc README.md
+  [[ -e README.rst ]]  && dodoc README.rst
+  [[ -e CHANGELOG ]]   && dodoc CHANGELOG
+  [[ -e CHANGELOG.md ]] && dodoc CHANGELOG.md
+  [[ -e LICENSE ]]     && dodoc LICENSE
 
-  # Install user systemd unit
-  # Upstream path: systemd/fetchcord.service
+  # Install user systemd unit if present
   if [[ -f systemd/fetchcord.service ]]; then
     systemd_douserunit systemd/fetchcord.service
   fi
