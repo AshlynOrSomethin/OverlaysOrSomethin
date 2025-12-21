@@ -635,11 +635,6 @@ src_prepare() {
 		done
 	fi
 
-	einfo "Applying perfetto-acc24608c84d2d2d8d684f40a110d0a6f4eddc51.patch"
-	pushd third_party/perfetto
-	eapply "${FILESDIR}/perfetto-acc24608c84d2d2d8d684f40a110d0a6f4eddc51.patch"
-	popd
-
 	if ! use bluetooth ; then
 		PATCHES+=(
 			"${FILESDIR}/disable-bluez-r1.patch"
