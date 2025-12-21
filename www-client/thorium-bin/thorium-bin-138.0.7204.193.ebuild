@@ -1,5 +1,5 @@
 EAPI=8
-
+inherit xdg-utils
 DESCRIPTION="Thorium Browser (binary, installed from upstream .deb)"
 HOMEPAGE="https://thorium.rocks"
 SRC_URI="
