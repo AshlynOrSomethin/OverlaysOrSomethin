@@ -8,7 +8,7 @@ SRC_URI="
 
 LICENSE="BSD"
 SLOT="0"
-KEYWORDS="~amd64"
+KEYWORDS="amd64"
 RESTRICT="strip mirror"
 
 # This is a best-effort dependency set commonly needed by Chromium-based binaries.
