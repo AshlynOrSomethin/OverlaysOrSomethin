@@ -5,7 +5,7 @@ DESCRIPTION="PvP modpack for modern Minecraft (Lunar Client AppImage, binary)"
 HOMEPAGE="https://lunarclient.com"
 LICENSE="all-rights-reserved"
 SLOT="0"
-KEYWORDS="~amd64"
+KEYWORDS="amd64"
 RESTRICT="strip mirror"
 
 # Upstream filename pattern includes '-ow' for this version
