@@ -20,6 +20,8 @@ EGIT_BRANCH="testing"
 # Runtime deps (Arch: neofetch, python-psutil; python itself is implied via distutils)
 RDEPEND="
   app-misc/neofetch
+  dev-python/pypresence
+  dev-python/pyyaml
   dev-python/psutil[${PYTHON_USEDEP}]
 "
 # Build-time deps
