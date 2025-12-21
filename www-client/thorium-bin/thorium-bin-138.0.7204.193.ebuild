@@ -1,5 +1,5 @@
 EAPI=8
-inherit xdg-utils
+inherit desktop xdg-utils
 DESCRIPTION="Thorium Browser (binary, installed from upstream .deb)"
 HOMEPAGE="https://thorium.rocks"
 SRC_URI="
@@ -102,16 +102,18 @@ src_install() {
 }
 
 pkg_postinst() {
-  xdg_icon_cache_update
-  xdg_desktop_database_update
+  # desktop eclass
+  type update_desktop_database >/dev/null 2>&1 && update_desktop_database
+  # xdg-utils eclass (new)
+  type xdg_icon_cache_update >/dev/null 2>&1 && xdg_icon_cache_update
+  # xdg-utils eclass (older)
+  type update_icon_caches >/dev/null 2>&1 && update_icon_caches
 
   elog "Thorium binary installed from upstream .deb."
-  elog "If video decode via VA-API is desired, you may add flags like:"
-  elog "  --enable-features=VaapiVideoDecoder"
-  elog "And ensure proper VA-API drivers (media-libs/libva, mesa VA drivers, etc.)."
 }
 
 pkg_postrm() {
-  xdg_icon_cache_update
-  xdg_desktop_database_update
+  type update_desktop_database >/dev/null 2>&1 && update_desktop_database
+  type xdg_icon_cache_update >/dev/null 2>&1 && xdg_icon_cache_update
+  type update_icon_caches >/dev/null 2>&1 && update_icon_caches
 }
