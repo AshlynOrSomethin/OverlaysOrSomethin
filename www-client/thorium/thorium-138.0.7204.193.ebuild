@@ -548,7 +548,6 @@ src_prepare() {
 		"${FILESDIR}/chromium-127-crabby.patch"
 		"${FILESDIR}/chromium-128-gtk-fix-prefers-color-scheme-query.patch"
 		"${FILESDIR}/chromium-132-no-link-builtins.patch"
-		"${FILESDIR}/chromium-130-fix-includes.patch" # https://github.com/Alex313031/thorium/issues/978
 		"${FILESDIR}/chromium-130-fix-building-without-tflite-lib.patch" # https://github.com/Alex313031/thorium/issues/978
 		"${FILESDIR}/chromium-135-gperf.patch"
 		"${FILESDIR}/chromium-137-fix-for-kde.patch"
