@@ -13,7 +13,7 @@ SRC_URI="https://download.sublimetext.com/sublime_merge_build_${PV}_x64.tar.xz -
 # Upstream ships a custom license file
 LICENSE="all-rights-reserved"
 SLOT="0"
-KEYWORDS="-* ~amd64"
+KEYWORDS="amd64"
 RESTRICT="mirror strip bindist"  # prebuilt binary; do not strip
 
 RDEPEND="
