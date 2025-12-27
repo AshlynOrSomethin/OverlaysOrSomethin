@@ -13,7 +13,7 @@ RESTRICT="mirror network-sandbox"
 
 BDEPEND="
   virtual/rust
-  sys-devel/clang
+  llvm-core/clang
   net-misc/curl
   dev-vcs/git
 "
