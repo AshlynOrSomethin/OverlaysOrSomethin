@@ -8,7 +8,7 @@ DESCRIPTION="A simple editor for simple needs (Microsoft Edit)"
 HOMEPAGE="https://github.com/microsoft/edit"
 LICENSE="MIT"
 SLOT="0"
-KEYWORDS="~amd64"
+KEYWORDS="amd64"
 
 # Build from upstream Git tag v1.2.1
 EGIT_REPO_URI="https://github.com/microsoft/edit.git"
