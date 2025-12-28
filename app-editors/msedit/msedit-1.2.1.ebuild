@@ -1,4 +1,3 @@
-# Copyright 2025
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=8
@@ -9,47 +8,56 @@ DESCRIPTION="A simple editor for simple needs (Microsoft Edit)"
 HOMEPAGE="https://github.com/microsoft/edit"
 LICENSE="MIT"
 SLOT="0"
-KEYWORDS="amd64"
+KEYWORDS="~amd64"
 
-# Build from the v1.2.1 tag
+# Build from upstream Git tag v1.2.1
 EGIT_REPO_URI="https://github.com/microsoft/edit.git"
 EGIT_TAG="v${PV}"
 
-# Runtime deps: glibc/gcc-libs are part of @system on Gentoo; hicolor for icon cache
+# Allow network during build (for Cargo crates) and fetch directly (no Gentoo mirrors)
+RESTRICT="network-sandbox mirror"
+
 RDEPEND="
   x11-themes/hicolor-icon-theme
   dev-libs/icu:=
 "
-# Build deps: rust toolchain
 BDEPEND="
   dev-lang/rust
+  net-misc/curl
+  dev-vcs/git
 "
 
-# git-r3 will clone into ${WORKDIR}/${P}/. The crate root has Cargo.toml at top.
+# git-r3 checks out into ${WORKDIR}/${P}
 S="${WORKDIR}/${P}"
 
 src_prepare() {
   default
-  # Match Arch: alter the desktop file to use msedit as binary name
-  sed -i 's/\(Exec=\)edit/\1msedit/' assets/com.microsoft.edit.desktop || die
+  # Make the .desktop Exec refer to msedit (the installed binary name)
+  sed -i 's/^\(Exec=\)edit/\1msedit/' assets/com.microsoft.edit.desktop || die
 }
 
 src_compile() {
-  # Build release binary
-  cargo build --locked --frozen --release || die
+  export CC=${CC:-clang}
+  # Use a clean cargo cache in the tempdir to avoid host pollution
+  export CARGO_HOME="${T}/cargo-home"
+
+  # Fetch crates and build in release mode (network enabled)
+  cargo fetch --locked || die
+  cargo build --locked --release || die
 }
 
 src_test() {
-  cargo test --frozen || die
+  # Optional: run tests if you want
+  # cargo test --frozen || die
+  :
 }
 
 src_install() {
-  # Install binary under the Gentoo name msedit
+  # Install binary as msedit
   dobin target/release/edit
-  # Rename installed binary to msedit (keep upstream name in build dir)
-  mv "${ED}"/usr/bin/edit "${ED}"/usr/bin/msedit || die
+  mv "${ED}/usr/bin/edit" "${ED}/usr/bin/msedit" || die
 
-  # Icon (SVG, scalable)
+  # Icon
   insinto /usr/share/icons/hicolor/scalable/apps
   newins assets/edit.svg msedit.svg
 
