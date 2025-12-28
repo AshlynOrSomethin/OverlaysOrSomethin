@@ -12,7 +12,7 @@ KEYWORDS="amd64"
 RESTRICT="mirror network-sandbox"
 
 BDEPEND="
-  virtual/rust
+  dev-lang/rust
   llvm-core/clang
   net-misc/curl
   dev-vcs/git
