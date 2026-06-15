@@ -1,10 +1,10 @@
 EAPI=8
 inherit desktop xdg-utils
 
-DESCRIPTION="Equibop (binary, installed from upstream .deb)"
-HOMEPAGE="https://github.com/Equicord/Equibop"
+DESCRIPTION="Vesktop (binary, installed from upstream .deb)"
+HOMEPAGE="https://github.com/Vencord/Vesktop"
 SRC_URI="
-  amd64? ( https://github.com/Equicord/Equibop/releases/download/v${PV}/equibop_${PV}_amd64.deb -> ${P}_amd64.deb )
+  amd64? ( https://github.com/Vencord/Vesktop/releases/download/v${PV}/vesktop_${PV}_amd64.deb -> ${P}_amd64.deb )
 "
 
 LICENSE="GPL-3"
@@ -33,18 +33,18 @@ src_install() {
   [[ -d usr ]] && cp -a usr "${D}"/ || die
   [[ -d opt ]] && cp -a opt "${D}"/ || die
 
-  if [[ -f ${D}/usr/share/applications/equibop.desktop ]]; then
+  if [[ -f ${D}/usr/share/applications/vesktop.desktop ]]; then
     sed -i \
-      -e 's|^Exec=.*|Exec=/usr/bin/equibop %U|' \
-      -e 's|^Icon=.*|Icon=equibop|' \
-      "${D}/usr/share/applications/equibop.desktop" || die
+      -e 's|^Exec=.*|Exec=/usr/bin/vesktop %U|' \
+      -e 's|^Icon=.*|Icon=vesktop|' \
+      "${D}/usr/share/applications/vesktop.desktop" || die
   fi
 
-  if [[ ! -x ${D}/usr/bin/equibop ]]; then
-    if [[ -x ${D}/opt/Equibop/equibop ]]; then
-      dosym /opt/Equibop/equibop /usr/bin/equibop
-    elif [[ -x ${D}/opt/equibop/equibop ]]; then
-      dosym /opt/equibop/equibop /usr/bin/equibop
+  if [[ ! -x ${D}/usr/bin/vesktop ]]; then
+    if [[ -x ${D}/opt/Vesktop/vesktop ]]; then
+      dosym /opt/Vesktop/vesktop /usr/bin/vesktop
+    elif [[ -x ${D}/opt/vesktop/vesktop ]]; then
+      dosym /opt/vesktop/vesktop /usr/bin/vesktop
     fi
   fi
 }
