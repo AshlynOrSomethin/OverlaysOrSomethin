@@ -30,8 +30,12 @@ src_unpack() {
 }
 
 src_install() {
-  [[ -d usr ]] && cp -a usr "${D}"/ || die
-  [[ -d opt ]] && cp -a opt "${D}"/ || die
+  if [[ -d usr ]]; then
+    cp -a usr "${D}"/ || die
+  fi
+  if [[ -d opt ]]; then
+    cp -a opt "${D}"/ || die
+  fi
 
   if [[ -f ${D}/usr/share/applications/equibop.desktop ]]; then
     sed -i \
