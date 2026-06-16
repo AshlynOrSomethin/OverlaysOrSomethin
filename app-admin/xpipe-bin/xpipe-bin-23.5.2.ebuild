@@ -55,6 +55,13 @@ src_install() {
 #!/bin/sh
 _APPDIR="/usr/lib/xpipe"
 _RUNNAME="${_APPDIR}/bin/xpipe"
+
+# Some Wayland sessions don't export DISPLAY into user shells.
+# XPipe's Java UI still requires X11 display discovery via DISPLAY.
+if [ -z "${DISPLAY}" ] && [ -n "${WAYLAND_DISPLAY}" ] && [ -S /tmp/.X11-unix/X0 ]; then
+  export DISPLAY=:0
+fi
+
 export PATH="${_APPDIR}/bin:${_APPDIR}/lib/runtime/bin:${PATH}"
 export LD_LIBRARY_PATH="${_APPDIR}/lib/runtime/lib:${LD_LIBRARY_PATH}"
 cd "${_APPDIR}" || exit 1
