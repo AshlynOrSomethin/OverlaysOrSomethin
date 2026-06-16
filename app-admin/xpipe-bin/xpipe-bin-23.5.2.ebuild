@@ -1,10 +1,10 @@
 EAPI=8
 
-inherit unpacker xdg-utils
+inherit xdg-utils
 
 DESCRIPTION="XPipe infrastructure shell connection hub (binary)"
 HOMEPAGE="https://xpipe.io/ https://github.com/xpipe-io/xpipe"
-SRC_URI="amd64? ( https://github.com/xpipe-io/xpipe/releases/download/${PV}/xpipe-installer-linux-x86_64.rpm -> ${P}-x86_64.rpm )"
+SRC_URI="amd64? ( https://github.com/xpipe-io/xpipe/releases/download/${PV}/xpipe-installer-linux-x86_64.deb -> ${P}-x86_64.deb )"
 
 LICENSE="Apache-2.0"
 SLOT="0"
@@ -22,7 +22,17 @@ S="${WORKDIR}"
 QA_PREBUILT="*"
 
 src_unpack() {
-  unpack "${P}-x86_64.rpm"
+  ar x "${DISTDIR}/${P}-x86_64.deb" || die
+
+  local tarball=
+  for tarball in data.tar.zst data.tar.xz data.tar.gz; do
+    if [[ -f ${tarball} ]]; then
+      tar xf "${tarball}" || die
+      break
+    fi
+  done
+
+  [[ -n ${tarball} ]] || die "Unsupported .deb payload format"
 }
 
 src_install() {
