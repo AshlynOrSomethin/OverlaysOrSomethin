@@ -28,7 +28,7 @@ src_unpack() {
 src_prepare() {
   default
 
-  local dmg pkgfile pkgroot payloadroot fontsfound
+  local dmg pkgfile pkgroot fontsfound
   local extract_dir="${T}/apple-fonts-extract"
 
   mkdir -p "${WORKDIR}/fonts" "${WORKDIR}/licenses" "${extract_dir}" || die
@@ -56,19 +56,15 @@ src_prepare() {
       break
     done < <(find "${pkgroot}" -type f -path '*/Resources/English.lproj/License.rtf' -print0)
 
-    payloadroot="${extract_dir}/payload"
-    rm -rf "${payloadroot}" || die
-    mkdir -p "${payloadroot}" || die
-
     while IFS= read -r -d '' payload; do
-      7z x "${payload}" -y "-o${payloadroot}" >/dev/null || die "Failed to extract payload in ${dmg}"
+      7z x "${payload}" -y >/dev/null || die "Failed to extract payload in ${dmg}"
     done < <(find "${pkgroot}" -type f \( -name 'Payload' -o -name 'Payload~' \) -print0)
 
     fontsfound=0
     while IFS= read -r -d '' fontfile; do
       cp -f "${fontfile}" "${WORKDIR}/fonts/" || die
       fontsfound=1
-    done < <(find "${payloadroot}" -type f \( -name '*.otf' -o -name '*.ttf' \) -path '*/Library/Fonts/*' -print0)
+    done < <(find "${pkgroot}" -type f \( -name '*.otf' -o -name '*.ttf' \) -path '*/Library/Fonts/*' -print0)
 
     [[ ${fontsfound} -eq 1 ]] || die "No fonts extracted from ${dmg}"
   done
