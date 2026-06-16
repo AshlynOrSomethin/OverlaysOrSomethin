@@ -58,8 +58,32 @@ _RUNNAME="${_APPDIR}/bin/xpipe"
 
 # Some Wayland sessions don't export DISPLAY into user shells.
 # XPipe's Java UI still requires X11 display discovery via DISPLAY.
-if [ -z "${DISPLAY}" ] && [ -n "${WAYLAND_DISPLAY}" ] && [ -S /tmp/.X11-unix/X0 ]; then
-  export DISPLAY=:0
+if [ -z "${DISPLAY}" ] && [ -n "${WAYLAND_DISPLAY}" ]; then
+  for xsock in /tmp/.X11-unix/X*; do
+    [ -S "${xsock}" ] || continue
+    xnum=${xsock##*/X}
+    case "${xnum}" in
+      ''|*[!0-9]*) continue ;;
+    esac
+    export DISPLAY=":${xnum}"
+    break
+  done
+
+  if [ -z "${DISPLAY}" ] && command -v pgrep >/dev/null 2>&1; then
+    xwpid=$(pgrep -u "$(id -u)" -n Xwayland 2>/dev/null || true)
+    if [ -n "${xwpid}" ] && [ -r "/proc/${xwpid}/cmdline" ]; then
+      xwargs=$(tr '\0' ' ' < "/proc/${xwpid}/cmdline")
+      set -- ${xwargs}
+      for arg in "$@"; do
+        case "${arg}" in
+          :[0-9]*)
+            export DISPLAY="${arg}"
+            break
+            ;;
+        esac
+      done
+    fi
+  fi
 fi
 
 export PATH="${_APPDIR}/bin:${_APPDIR}/lib/runtime/bin:${PATH}"
