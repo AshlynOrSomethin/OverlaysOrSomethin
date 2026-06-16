@@ -28,7 +28,7 @@ src_unpack() {
 src_prepare() {
   default
 
-  local dmg pkgfile pkgroot fontsfound
+  local dmg fontsfound
   local extract_dir="${T}/apple-fonts-extract"
 
   mkdir -p "${WORKDIR}/fonts" "${WORKDIR}/licenses" "${extract_dir}" || die
@@ -42,29 +42,36 @@ src_prepare() {
 
     7z e "${dmg}" -y "-o${extract_dir}" >/dev/null || die "Failed to extract ${dmg}"
 
-    pkgfile=$(find "${extract_dir}" -maxdepth 1 -type f -name '*.pkg' | head -n1)
-    [[ -n ${pkgfile} ]] || die "No .pkg found in ${dmg}"
+    # Follow upstream AUR extraction flow closely for compatibility.
+    pushd "${extract_dir}" >/dev/null || die
 
-    pkgroot="${extract_dir}/pkg"
-    rm -rf "${pkgroot}" || die
-    mkdir -p "${pkgroot}" || die
-
-    7z x -txar "${pkgfile}" -y "-o${pkgroot}" >/dev/null || die "Failed to unpack package archive in ${dmg}"
+    7z x -txar ./*.pkg -y >/dev/null || die "Failed to unpack package archive in ${dmg}"
 
     while IFS= read -r -d '' lic; do
       cp -f "${lic}" "${WORKDIR}/licenses/$(basename "${dmg}" .dmg)-LICENSE.rtf" || die
       break
-    done < <(find "${pkgroot}" -type f -path '*/Resources/English.lproj/License.rtf' -print0)
-
-    while IFS= read -r -d '' payload; do
-      7z x "${payload}" -y >/dev/null || die "Failed to extract payload in ${dmg}"
-    done < <(find "${pkgroot}" -type f \( -name 'Payload' -o -name 'Payload~' \) -print0)
+    done < <(find . -type f -path '*/Resources/English.lproj/License.rtf' -print0)
 
     fontsfound=0
-    while IFS= read -r -d '' fontfile; do
-      cp -f "${fontfile}" "${WORKDIR}/fonts/" || die
-      fontsfound=1
-    done < <(find "${pkgroot}" -type f \( -name '*.otf' -o -name '*.ttf' \) -path '*/Library/Fonts/*' -print0)
+    while IFS= read -r -d '' pkgdir; do
+      pushd "${pkgdir}" >/dev/null || die
+
+      if [[ -f Payload ]]; then
+        7z x Payload -y >/dev/null || die "Failed to extract Payload in ${pkgdir}"
+      fi
+      if [[ -f Payload~ ]]; then
+        7z x Payload~ -y >/dev/null || die "Failed to extract Payload~ in ${pkgdir}"
+      fi
+
+      while IFS= read -r -d '' fontfile; do
+        cp -f "${fontfile}" "${WORKDIR}/fonts/" || die
+        fontsfound=1
+      done < <(find . -type f \( -name '*.otf' -o -name '*.ttf' \) -path '*/Library/Fonts/*' -print0)
+
+      popd >/dev/null || die
+    done < <(find . -maxdepth 2 -type d -name '*.pkg' -print0)
+
+    popd >/dev/null || die
 
     [[ ${fontsfound} -eq 1 ]] || die "No fonts extracted from ${dmg}"
   done
