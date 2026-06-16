@@ -80,6 +80,13 @@ fi
 
 export PATH="${_APPDIR}/bin:${_APPDIR}/lib/runtime/bin:${PATH}"
 export LD_LIBRARY_PATH="${_APPDIR}/lib/runtime/lib:${LD_LIBRARY_PATH}"
+
+# Work around posix_spawn permission issues seen on some systems.
+case " ${JAVA_TOOL_OPTIONS} " in
+  *" -Djdk.lang.Process.launchMechanism="*) ;;
+  *) export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} -Djdk.lang.Process.launchMechanism=FORK" ;;
+esac
+
 cd "${_APPDIR}" || exit 1
 exec "${_RUNNAME}" "$@"
 EOF
