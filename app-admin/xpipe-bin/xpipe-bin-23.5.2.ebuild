@@ -40,7 +40,15 @@ src_install() {
     insinto /usr/lib
     doins -r opt/xpipe
   else
-    die "Expected opt/xpipe in RPM payload"
+    die "Expected opt/xpipe in package payload"
+  fi
+
+  # The payload is installed with doins, so restore executable bits for launchers.
+  if [[ -d ${D}/usr/lib/xpipe/bin ]]; then
+    find "${D}/usr/lib/xpipe/bin" -type f -exec chmod 0755 {} + || die
+  fi
+  if [[ -d ${D}/usr/lib/xpipe/lib/runtime/bin ]]; then
+    find "${D}/usr/lib/xpipe/lib/runtime/bin" -type f -exec chmod 0755 {} + || die
   fi
 
   cat > "${T}/xpipe" <<'EOF' || die
