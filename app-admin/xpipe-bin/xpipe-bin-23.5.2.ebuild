@@ -1,0 +1,72 @@
+EAPI=8
+
+inherit unpacker xdg-utils
+
+DESCRIPTION="XPipe infrastructure shell connection hub (binary)"
+HOMEPAGE="https://xpipe.io/ https://github.com/xpipe-io/xpipe"
+SRC_URI="amd64? ( https://github.com/xpipe-io/xpipe/releases/download/${PV}/xpipe-installer-linux-x86_64.rpm -> ${P}-x86_64.rpm )"
+
+LICENSE="Apache-2.0"
+SLOT="0"
+KEYWORDS="amd64"
+RESTRICT="strip mirror"
+
+RDEPEND="
+  media-video/ffmpeg
+  x11-libs/gtk+:3
+  x11-libs/libX11
+  media-libs/alsa-lib
+"
+
+S="${WORKDIR}"
+QA_PREBUILT="*"
+
+src_unpack() {
+  unpack "${P}-x86_64.rpm"
+}
+
+src_install() {
+  if [[ -d opt/xpipe ]]; then
+    insinto /usr/lib
+    doins -r opt/xpipe
+  else
+    die "Expected opt/xpipe in RPM payload"
+  fi
+
+  cat > "${T}/xpipe" <<'EOF' || die
+#!/bin/sh
+_APPDIR="/usr/lib/xpipe"
+_RUNNAME="${_APPDIR}/bin/xpipe"
+export PATH="${_APPDIR}/bin:${_APPDIR}/lib/runtime/bin:${PATH}"
+export LD_LIBRARY_PATH="${_APPDIR}/lib/runtime/lib:${LD_LIBRARY_PATH}"
+cd "${_APPDIR}" || exit 1
+exec "${_RUNNAME}" "$@"
+EOF
+  dobin "${T}/xpipe"
+
+  if [[ -f opt/xpipe/xpipe.desktop ]]; then
+    sed -e 's|^TryExec=.*|TryExec=/usr/lib/xpipe/bin/xpiped|' \
+        -e 's|^Exec=.*|Exec=xpipe|' \
+        -e 's|^Path=.*|Path=/usr/lib/xpipe|' \
+        opt/xpipe/xpipe.desktop > "${T}/xpipe.desktop" || die
+    insinto /usr/share/applications
+    newins "${T}/xpipe.desktop" xpipe.desktop
+  fi
+
+  if [[ -d usr/share/icons ]]; then
+    insinto /usr/share/icons
+    doins -r usr/share/icons/*
+  fi
+}
+
+pkg_postinst() {
+  type update_desktop_database >/dev/null 2>&1 && update_desktop_database
+  type xdg_icon_cache_update >/dev/null 2>&1 && xdg_icon_cache_update
+  type update_icon_caches >/dev/null 2>&1 && update_icon_caches
+}
+
+pkg_postrm() {
+  type update_desktop_database >/dev/null 2>&1 && update_desktop_database
+  type xdg_icon_cache_update >/dev/null 2>&1 && xdg_icon_cache_update
+  type update_icon_caches >/dev/null 2>&1 && update_icon_caches
+}
