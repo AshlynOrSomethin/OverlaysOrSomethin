@@ -27,8 +27,10 @@ S="${WORKDIR}"
 QA_PREBUILT="*"
 
 src_unpack() {
-  unpack "hll2305lpr-${MY_PV_BASE}-${MY_PV_REL}.i386.rpm"
-  unpack "hll2305cupswrapper-${MY_PV_BASE}-${MY_PV_REL}.i386.rpm"
+  for rpm in "hll2305lpr-${MY_PV_BASE}-${MY_PV_REL}.i386.rpm" "hll2305cupswrapper-${MY_PV_BASE}-${MY_PV_REL}.i386.rpm"; do
+    ( cd "${WORKDIR}" && rpm2cpio "${DISTDIR}/${rpm}" 2>/dev/null | cpio -id 2>/dev/null ) || \
+    ( cd "${WORKDIR}" && bsdtar -xf "${DISTDIR}/${rpm}" ) || die "Failed to extract ${rpm}"
+  done
 }
 
 src_prepare() {

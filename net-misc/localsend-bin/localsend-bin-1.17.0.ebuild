@@ -65,6 +65,11 @@ src_install() {
   if [[ ! -e ${D}/usr/bin/localsend ]]; then
     dosym /opt/localsend-bin/localsend /usr/bin/localsend
   fi
+
+  # Ensure the bundled binary is executable.
+  if [[ -f ${D}/opt/localsend-bin/localsend ]]; then
+    chmod 0755 "${D}/opt/localsend-bin/localsend" || die
+  fi
 }
 
 pkg_postinst() {

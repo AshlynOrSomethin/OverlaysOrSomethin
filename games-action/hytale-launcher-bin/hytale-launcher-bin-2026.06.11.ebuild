@@ -34,6 +34,27 @@ src_install() {
 
   cat > "${T}/hytale-launcher" <<'EOF' || die
 #!/bin/sh
+
+# Wayland sessions may not export DISPLAY; detect active X server.
+if [ -z "${DISPLAY}" ] && command -v pgrep >/dev/null 2>&1; then
+  for xproc in Xwayland Xorg; do
+    xpid=$(pgrep -u "$(id -u)" -n "${xproc}" 2>/dev/null || true)
+    if [ -n "${xpid}" ] && [ -r "/proc/${xpid}/cmdline" ]; then
+      xargs=$(tr '\0' ' ' < "/proc/${xpid}/cmdline")
+      set -- ${xargs}
+      for arg in "$@"; do
+        case "${arg}" in
+          :[0-9]*)
+            export DISPLAY="${arg}"
+            break
+            ;;
+        esac
+      done
+    fi
+    [ -n "${DISPLAY}" ] && break
+  done
+fi
+
 exec /opt/hytale-launcher-bin/hytale-launcher "$@"
 EOF
   dobin "${T}/hytale-launcher"

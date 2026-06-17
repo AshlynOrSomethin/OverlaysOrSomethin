@@ -44,6 +44,11 @@ src_install() {
     cp -a usr "${D}"/ || die
   fi
 
+  # Ensure executables in opt are executable.
+  if [[ -d ${D}/opt/MQTT\ Explorer/bin ]]; then
+    find "${D}/opt/MQTT Explorer/bin" -type f -exec chmod 0755 {} + || die
+  fi
+
   if [[ ! -x ${D}/usr/bin/mqtt-explorer && -x ${D}/opt/MQTT\ Explorer/mqtt-explorer ]]; then
     dosym '/opt/MQTT Explorer/mqtt-explorer' /usr/bin/mqtt-explorer
   fi
