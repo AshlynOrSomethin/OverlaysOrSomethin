@@ -160,10 +160,10 @@ def write_manifest(
     manifest = (
         f"DIST {distfile_name} {dist_size} "
         f"BLAKE2B {blake2b_file(distfile_path)} "
-        f"SHA512 {sha512_file(distfile_path)}\\n"
+        f"SHA512 {sha512_file(distfile_path)}\n"
         f"EBUILD {ebuild_name} {ebuild_size} "
         f"BLAKE2B {blake2b_file(ebuild_path)} "
-        f"SHA512 {sha512_file(ebuild_path)}\\n"
+        f"SHA512 {sha512_file(ebuild_path)}\n"
     )
     (package_dir / "Manifest").write_text(manifest, encoding="utf-8")
 
