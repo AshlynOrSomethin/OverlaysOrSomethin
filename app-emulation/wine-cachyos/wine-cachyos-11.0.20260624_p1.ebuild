@@ -98,6 +98,7 @@ src_configure() {
 
 	CFLAGS="${mycflags}" econf \
 		--prefix="/opt/${PF}" \
+		--without-ffmpeg \
 		--disable-tests \
 		--enable-win64
 }
