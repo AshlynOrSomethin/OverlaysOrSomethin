@@ -40,7 +40,7 @@ BDEPEND="app-arch/zstd"
 S="${WORKDIR}"
 
 src_install() {
-	cp -a usr "${D}"/ || die
+	tar --zstd -xpf "${DISTDIR}/${P}.pkg.tar.zst" -C "${D}" ./usr || die
 	dosym wine /usr/bin/wine-cachyos
 }
 
