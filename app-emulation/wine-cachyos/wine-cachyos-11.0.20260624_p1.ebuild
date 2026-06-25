@@ -83,7 +83,7 @@ src_configure() {
 
 	mkdir -p build || die
 	pushd build >/dev/null || die
-	CFLAGS="${mycflags}" econf \
+	CFLAGS="${mycflags}" ECONF_SOURCE="${S}" econf \
 		--prefix="/opt/${PF}" \
 		--disable-tests \
 		--enable-win64
