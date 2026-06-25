@@ -74,7 +74,7 @@ src_prepare() {
 
 	# Snapshot tarballs omit generated Vulkan headers needed by configure.
 	pushd dlls/winevulkan >/dev/null || die
-	./make_vulkan || die
+	./make_vulkan -x vk.xml -X video.xml || die
 	popd >/dev/null || die
 
 	# GitHub source archives do not include generated configure scripts.
