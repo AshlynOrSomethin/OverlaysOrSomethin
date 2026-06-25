@@ -76,6 +76,9 @@ pkg_setup() {
 src_prepare() {
 	default
 
+	# Snapshot tarballs omit generated server protocol headers.
+	./tools/make_requests || die
+
 	# Snapshot tarballs omit generated syscall headers needed during configure.
 	./tools/make_specfiles || die
 
