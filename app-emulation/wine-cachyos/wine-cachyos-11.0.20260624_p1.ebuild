@@ -72,6 +72,11 @@ pkg_setup() {
 src_prepare() {
 	default
 
+	# Snapshot tarballs omit generated Vulkan headers needed by configure.
+	pushd dlls/winevulkan >/dev/null || die
+	./make_vulkan || die
+	popd >/dev/null || die
+
 	# GitHub source archives do not include generated configure scripts.
 	eautoreconf
 }
