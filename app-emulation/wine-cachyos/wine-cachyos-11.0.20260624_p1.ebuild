@@ -3,140 +3,48 @@
 
 EAPI=8
 
-inherit autotools wrapper
-
-COMMIT_STAGING="8d29c562d31e84b2817305c0f576832207e39578"
-COMMIT_NATIVE="80163bd5856d34f53ed018abfae8d00a26b54c54"
-SRC_URI="
-	staging? ( https://github.com/CachyOS/wine-cachyos/archive/${COMMIT_STAGING}.tar.gz -> ${P}-staging.tar.gz )
-	native?  ( https://github.com/CachyOS/wine-cachyos/archive/${COMMIT_NATIVE}.tar.gz -> ${P}-native.tar.gz )
-"
-
-DESCRIPTION="CachyOS Wine source snapshot (staging/native branches)"
+DESCRIPTION="CachyOS Wine prebuilt binary package"
 HOMEPAGE="https://github.com/CachyOS/wine-cachyos"
+SRC_URI="https://cdn77.cachyos.org/repo/x86_64/cachyos/wine-cachyos-2%3A10.0.20260425-1-x86_64.pkg.tar.zst -> ${P}.pkg.tar.zst"
 
-IUSE="+staging native abi_x86_32 +abi_x86_64 cpu_flags_x86_avx2 cpu_flags_x86_avx512f"
-REQUIRED_USE="
-	^^ ( staging native )
-	|| ( abi_x86_32 abi_x86_64 )
-	cpu_flags_x86_avx512f? ( cpu_flags_x86_avx2 )
-"
-
-LICENSE="LGPL-2.1"
+LICENSE="LGPL-2.1+"
 SLOT="0"
 KEYWORDS="~amd64"
 RESTRICT="mirror"
 
 RDEPEND="
+	!app-emulation/wine
 	dev-libs/glib:2
+	dev-libs/wayland
 	media-libs/alsa-lib
 	media-libs/fontconfig
 	media-libs/freetype:2
-	media-libs/libglvnd
 	media-libs/libpulse
-	net-libs/gnutls
+	net-libs/libpcap
+	sys-apps/attr
+	sys-apps/systemd
+	sys-devel/gettext
+	sys-libs/libunwind
 	sys-libs/zlib
 	x11-libs/libX11
+	x11-libs/libXcursor
 	x11-libs/libXext
-	abi_x86_32? (
-		dev-libs/glib:2[abi_x86_32]
-		media-libs/alsa-lib[abi_x86_32]
-		media-libs/fontconfig[abi_x86_32]
-		media-libs/freetype:2[abi_x86_32]
-		media-libs/libglvnd[abi_x86_32]
-		net-libs/gnutls[abi_x86_32]
-		sys-libs/zlib[abi_x86_32]
-		x11-libs/libX11[abi_x86_32]
-		x11-libs/libXext[abi_x86_32]
-	)
+	x11-libs/libXi
+	x11-libs/libXrandr
+	x11-libs/libxkbcommon
 "
 
-DEPEND="
-	${RDEPEND}
-	sys-devel/bison
-	sys-devel/flex
-	sys-devel/gettext
-	virtual/pkgconfig
-"
+DEPEND="${RDEPEND}"
+BDEPEND="app-arch/zstd"
 
-BDEPEND="
-	dev-lang/perl
-"
-
-pkg_setup() {
-	if use staging; then
-		COMMIT="${COMMIT_STAGING}"
-	else
-		COMMIT="${COMMIT_NATIVE}"
-	fi
-
-	S="${WORKDIR}/${PN}-${COMMIT}"
-}
-
-src_prepare() {
-	default
-
-	# Avoid duplicate Vulkan handle typedefs against generated wine/vulkan.h.
-	sed -i \
-		-e '/typedef[[:space:]]\+UINT64[[:space:]]\+VkCuFunctionNVX;/d' \
-		-e '/typedef[[:space:]]\+UINT64[[:space:]]\+VkCuModuleNVX;/d' \
-		-e '/typedef[[:space:]]\+UINT64[[:space:]]\+VkSurfaceKHR;/d' \
-		dlls/amd_ags_x64/vkd3d_vk_includes.h || die
-
-	# Snapshot tarballs omit generated server protocol headers.
-	./tools/make_requests || die
-
-	# Snapshot tarballs omit generated syscall headers needed during configure.
-	./tools/make_specfiles || die
-
-	# Snapshot tarballs omit generated Vulkan headers needed by configure.
-	pushd dlls/winevulkan >/dev/null || die
-	./make_vulkan -x vk.xml -X video.xml || die
-	popd >/dev/null || die
-
-	# GitHub source archives do not include generated configure scripts.
-	eautoreconf
-}
-
-src_configure() {
-	local mycflags="${CFLAGS}"
-	use cpu_flags_x86_avx2 && mycflags+=" -mavx2"
-	use cpu_flags_x86_avx512f && mycflags+=" -mavx512f"
-
-	CFLAGS="${mycflags}" econf \
-		--prefix="/opt/${PF}" \
-		--without-ffmpeg \
-		--disable-tests \
-		--enable-win64
-}
-
-src_compile() {
-	emake
-}
+S="${WORKDIR}"
 
 src_install() {
-	emake DESTDIR="${D}" install
-
-	if [[ -x "${ED}/opt/${PF}/bin/wine" ]]; then
-		make_wrapper wine-cachyos "/opt/${PF}/bin/wine"
-	fi
-	if [[ -x "${ED}/opt/${PF}/bin/wine64" ]]; then
-		make_wrapper wine64-cachyos "/opt/${PF}/bin/wine64"
-	fi
-
-	dodoc README.md ANNOUNCE.md
+	cp -a usr "${D}"/ || die
+	dosym wine /usr/bin/wine-cachyos
 }
 
 pkg_postinst() {
-	local branch commit
-	if use staging; then
-		branch="cachyos_11.0_release/_staging"
-		commit="${COMMIT_STAGING}"
-	else
-		branch="cachyos_11.0_release/_native"
-		commit="${COMMIT_NATIVE}"
-	fi
-
-	einfo "Installed snapshot commit: ${commit:0:12} from ${branch}"
-	einfo "Launch with: wine-cachyos"
+	einfo "Installed CachyOS binary package: wine-cachyos 2:10.0.20260425-1"
+	einfo "Launch with: wine-cachyos (or wine)"
 }
