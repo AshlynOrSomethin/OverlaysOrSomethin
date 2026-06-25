@@ -59,6 +59,10 @@ DEPEND="
 	virtual/pkgconfig
 "
 
+BDEPEND="
+	dev-lang/perl
+"
+
 pkg_setup() {
 	if use staging; then
 		COMMIT="${COMMIT_STAGING}"
@@ -71,6 +75,9 @@ pkg_setup() {
 
 src_prepare() {
 	default
+
+	# Snapshot tarballs omit generated syscall headers needed during configure.
+	./tools/make_specfiles || die
 
 	# Snapshot tarballs omit generated Vulkan headers needed by configure.
 	pushd dlls/winevulkan >/dev/null || die
