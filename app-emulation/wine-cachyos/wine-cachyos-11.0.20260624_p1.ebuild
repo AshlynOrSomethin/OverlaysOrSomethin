@@ -81,21 +81,18 @@ src_configure() {
 	use cpu_flags_x86_avx2 && mycflags+=" -mavx2"
 	use cpu_flags_x86_avx512f && mycflags+=" -mavx512f"
 
-	mkdir -p build || die
-	pushd build >/dev/null || die
-	CFLAGS="${mycflags}" ECONF_SOURCE="${S}" econf \
+	CFLAGS="${mycflags}" econf \
 		--prefix="/opt/${PF}" \
 		--disable-tests \
 		--enable-win64
-	popd >/dev/null || die
 }
 
 src_compile() {
-	emake -C build
+	emake
 }
 
 src_install() {
-	emake -C build DESTDIR="${D}" install
+	emake DESTDIR="${D}" install
 
 	if [[ -x "${ED}/opt/${PF}/bin/wine" ]]; then
 		make_wrapper wine-cachyos "/opt/${PF}/bin/wine"
