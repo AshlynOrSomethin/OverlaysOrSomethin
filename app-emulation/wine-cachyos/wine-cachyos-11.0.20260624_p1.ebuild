@@ -76,6 +76,13 @@ pkg_setup() {
 src_prepare() {
 	default
 
+	# Avoid duplicate Vulkan handle typedefs against generated wine/vulkan.h.
+	sed -i \
+		-e '/typedef[[:space:]]\+UINT64[[:space:]]\+VkCuFunctionNVX;/d' \
+		-e '/typedef[[:space:]]\+UINT64[[:space:]]\+VkCuModuleNVX;/d' \
+		-e '/typedef[[:space:]]\+UINT64[[:space:]]\+VkSurfaceKHR;/d' \
+		dlls/amd_ags_x64/vkd3d_vk_includes.h || die
+
 	# Snapshot tarballs omit generated server protocol headers.
 	./tools/make_requests || die
 
