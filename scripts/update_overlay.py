@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 GITHUB_API = "https://api.github.com/repos/{repo}/releases/latest"
+FLATHUB_APPSTREAM_API = "https://flathub.org/api/v2/appstream/{app_id}"
 
 
 @dataclass(frozen=True)
@@ -28,12 +29,15 @@ class PackageConfig:
     distfile_name: Callable[[str], str]
     version_from_tag: bool = False
     tag_strip_prefix: str = "v"
+    source: str = "github"
+    flathub_app_id: Optional[str] = None
+    source_asset_name: Optional[Callable[[str], str]] = None
+    source_download_url: Optional[Callable[[str], str]] = None
 
 
 UNMANAGED_PACKAGES: dict[str, str] = {
     "app-misc/fetchcord": "Upstream release assets do not currently provide a stable Linux binary artifact to package as -bin.",
     "app-editors/sublime-merge": "Can be automated, but currently kept manual because upstream build channel/URL policy can vary.",
-    "games-action/lunarclient": "Upstream Linux AppImage naming/channel changes frequently; requires package-specific guardrails.",
     "www-client/thorium-bin": "Upstream release/tag/asset conventions are inconsistent and may require custom mapping.",
     "media-fonts/nerd-fonts": "Very large multi-dist Manifest and ebuild-specific versioning logic require dedicated updater flow.",
 }
@@ -73,6 +77,18 @@ CONFIGS: tuple[PackageConfig, ...] = (
         version_from_tag=True,
         tag_strip_prefix="",
         distfile_name=lambda v: f"zen-bin-{v}.AppImage",
+    ),
+    PackageConfig(
+        package_name="lunarclient",
+        category="games-action",
+        directory="games-action/lunarclient",
+        repo="",
+        source="flathub",
+        flathub_app_id="com.lunarclient.LunarClient",
+        source_asset_name=lambda v: f"Lunar%20Client-{v}-ow.AppImage",
+        source_download_url=lambda v: f"https://launcherupdates.lunarclientcdn.com/Lunar%20Client-{v}-ow.AppImage",
+        asset_pattern=r"",
+        distfile_name=lambda v: f"lunarclient-{v}.AppImage",
     ),
     PackageConfig(
         package_name="fresh-editor",
@@ -121,6 +137,15 @@ def github_request(url: str) -> dict:
     req = urllib.request.Request(
         url,
         headers=headers,
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def flathub_appstream_request(app_id: str) -> dict:
+    req = urllib.request.Request(
+        FLATHUB_APPSTREAM_API.format(app_id=app_id),
+        headers={"User-Agent": "overlay-auto-updater"},
     )
     with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
         return json.loads(resp.read().decode("utf-8"))
@@ -188,12 +213,33 @@ def update_package(root: Path, cfg: PackageConfig, dry_run: bool) -> bool:
     package_dir = root / cfg.directory
     cur_ver, cur_ebuild = current_version(package_dir, cfg.package_name)
 
-    release = github_request(GITHUB_API.format(repo=cfg.repo))
-    asset = find_asset(release, cfg.asset_pattern)
-    if asset is None:
-        raise RuntimeError(f"No matching asset found for {cfg.package_name}")
+    if cfg.source == "github":
+        release = github_request(GITHUB_API.format(repo=cfg.repo))
+        asset = find_asset(release, cfg.asset_pattern)
+        if asset is None:
+            raise RuntimeError(f"No matching asset found for {cfg.package_name}")
+        new_ver = version_from_release(cfg, release, asset)
+        source_name = asset["name"]
+        source_url = asset["browser_download_url"]
+    elif cfg.source == "flathub":
+        if not cfg.flathub_app_id:
+            raise RuntimeError(f"Missing flathub_app_id for {cfg.package_name}")
+        appstream = flathub_appstream_request(cfg.flathub_app_id)
+        releases = appstream.get("releases", [])
+        if not releases:
+            raise RuntimeError(f"No releases found for {cfg.package_name}")
 
-    new_ver = version_from_release(cfg, release, asset)
+        newest = max(releases, key=lambda r: int(r.get("timestamp", 0)))
+        new_ver = newest.get("version", "")
+        if not new_ver:
+            raise RuntimeError(f"Unable to parse Flathub version for {cfg.package_name}")
+        if cfg.source_asset_name is None or cfg.source_download_url is None:
+            raise RuntimeError(f"Missing source mapping for {cfg.package_name}")
+        source_name = cfg.source_asset_name(new_ver)
+        source_url = cfg.source_download_url(new_ver)
+    else:
+        raise RuntimeError(f"Unsupported source '{cfg.source}' for {cfg.package_name}")
+
     new_ebuild_name = f"{cfg.package_name}-{new_ver}.ebuild"
     new_ebuild = package_dir / new_ebuild_name
 
@@ -212,8 +258,8 @@ def update_package(root: Path, cfg: PackageConfig, dry_run: bool) -> bool:
 
     # Always refresh Manifest to keep hashes valid if ebuild changed by hand.
     with tempfile.TemporaryDirectory() as td:
-        distfile = Path(td) / asset["name"]
-        urllib.request.urlretrieve(asset["browser_download_url"], distfile)  # noqa: S310
+        distfile = Path(td) / source_name
+        urllib.request.urlretrieve(source_url, distfile)  # noqa: S310
 
         dist_renamed = Path(td) / cfg.distfile_name(new_ver)
         distfile.rename(dist_renamed)

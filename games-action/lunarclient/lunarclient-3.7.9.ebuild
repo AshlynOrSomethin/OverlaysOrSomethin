@@ -8,7 +8,7 @@ SLOT="0"
 KEYWORDS="amd64"
 RESTRICT="strip mirror"
 
-# Upstream filename pattern includes '-ow' for this version
+# Upstream filename pattern includes '-ow'
 APPIMAGE_REMOTE="Lunar%20Client-${PV}-ow.AppImage"
 # Rename locally for a stable distfile name
 APPIMAGE_LOCAL="${PN}-${PV}.AppImage"
