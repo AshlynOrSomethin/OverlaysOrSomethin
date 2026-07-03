@@ -36,14 +36,31 @@ class PackageConfig:
 
 
 UNMANAGED_PACKAGES: dict[str, str] = {
+    "app-emulation/wine-cachyos": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
     "app-misc/fetchcord": "Upstream release assets do not currently provide a stable Linux binary artifact to package as -bin.",
     "app-editors/sublime-merge": "Can be automated, but currently kept manual because upstream build channel/URL policy can vary.",
+    "games-action/hytale-launcher-bin": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
+    "games-util/nbtexplorer-bin": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
+    "media-fonts/apple-fonts": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
     "www-client/thorium-bin": "Upstream release/tag/asset conventions are inconsistent and may require custom mapping.",
+    "net-misc/localsend-bin": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
+    "net-misc/mqtt-explorer-bin": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
+    "net-print/brother-hll2305w": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
     "media-fonts/nerd-fonts": "Very large multi-dist Manifest and ebuild-specific versioning logic require dedicated updater flow.",
 }
 
 
 CONFIGS: tuple[PackageConfig, ...] = (
+    PackageConfig(
+        package_name="xpipe-bin",
+        category="app-admin",
+        directory="app-admin/xpipe-bin",
+        repo="xpipe-io/xpipe",
+        asset_pattern=r"^xpipe-installer-linux-x86_64\.deb$",
+        version_from_tag=True,
+        tag_strip_prefix="",
+        distfile_name=lambda v: f"xpipe-bin-{v}-x86_64.deb",
+    ),
     PackageConfig(
         package_name="equibop",
         category="net-im",

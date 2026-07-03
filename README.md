@@ -69,6 +69,7 @@ What it does:
 - Prints unmanaged package paths that still require manual maintenance.
 
 Currently automated package updates:
+- `app-admin/xpipe-bin`
 - `net-im/equibop`
 - `net-im/vesktop`
 - `www-client/floorp-bin`
@@ -93,6 +94,7 @@ python3 scripts/update_overlay.py --dry-run
 ## Notes
 
 The updater currently auto-version/manifests these packages:
+- `app-admin/xpipe-bin`
 - `net-im/equibop`
 - `net-im/vesktop`
 - `www-client/floorp-bin`
