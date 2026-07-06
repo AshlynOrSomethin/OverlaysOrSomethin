@@ -274,9 +274,6 @@ def update_package(root: Path, cfg: PackageConfig, dry_run: bool) -> bool:
     if new_ver != cur_ver:
         changed = True
         print(f"[{cfg.package_name}] version {cur_ver} -> {new_ver}")
-        if not dry_run:
-            shutil.copy2(cur_ebuild, new_ebuild)
-            cur_ebuild.unlink()
     else:
         print(f"[{cfg.package_name}] already at {cur_ver}; refreshing Manifest")
 
@@ -291,6 +288,9 @@ def update_package(root: Path, cfg: PackageConfig, dry_run: bool) -> bool:
         dist_renamed = Path(td) / cfg.distfile_name(new_ver)
         distfile.rename(dist_renamed)
 
+        if changed:
+            shutil.copy2(cur_ebuild, new_ebuild)
+
         target_ebuild = new_ebuild if new_ebuild.exists() else cur_ebuild
         write_manifest(
             package_dir,
@@ -299,6 +299,9 @@ def update_package(root: Path, cfg: PackageConfig, dry_run: bool) -> bool:
             target_ebuild.name,
             target_ebuild,
         )
+
+    if changed:
+        cur_ebuild.unlink()
 
     return changed
 
@@ -312,20 +315,39 @@ def main() -> int:
     os.chdir(root)
 
     any_changed = False
+    failures: list[tuple[str, str]] = []
     for cfg in CONFIGS:
-        changed = update_package(root, cfg, args.dry_run)
-        any_changed = any_changed or changed
+        try:
+            changed = update_package(root, cfg, args.dry_run)
+            any_changed = any_changed or changed
+        except Exception as exc:
+            failures.append((cfg.package_name, str(exc)))
+            print(f"[{cfg.package_name}] ERROR: {exc}")
 
     print("\nUnmanaged package paths:")
     for path, reason in UNMANAGED_PACKAGES.items():
         print(f"- {path}: {reason}")
 
+    if failures:
+        print("\nPackage update failures:")
+        for package_name, error in failures:
+            print(f"- {package_name}: {error}")
+
     if args.dry_run:
-        print("Dry-run complete")
+        if failures:
+            print("Dry-run complete with errors")
+        else:
+            print("Dry-run complete")
     elif any_changed:
-        print("Updates applied")
+        if failures:
+            print("Updates applied with errors")
+        else:
+            print("Updates applied")
     else:
-        print("No version bumps; manifests refreshed")
+        if failures:
+            print("No version bumps; manifests refreshed for successful packages only")
+        else:
+            print("No version bumps; manifests refreshed")
 
     return 0
 
