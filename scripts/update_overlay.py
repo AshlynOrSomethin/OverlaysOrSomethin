@@ -20,57 +20,6 @@ GITHUB_API = "https://api.github.com/repos/{repo}/releases/latest"
 FLATHUB_APPSTREAM_API = "https://flathub.org/api/v2/appstream/{app_id}"
 GENTOO_CONTENTS_API = "https://api.github.com/repos/gentoo/gentoo/contents/{path}"
 GENTOO_FIREFOX_PATH = "www-client/firefox"
-FIREFOX_PATCH_NAME = "firefox-audio-software-volume.patch"
-FIREFOX_PATCH_LINE = f'eapply "${{FILESDIR}}/{FIREFOX_PATCH_NAME}"'
-FIREFOX_PATCH_CONTENT = """--- a/dom/media/AudioStream.cpp
-+++ b/dom/media/AudioStream.cpp
-@@ -9,6 +9,7 @@
- #include <algorithm>
-
- #include \"AudioConverter.h\"
-+#include \"AudioSampleFormat.h\"
- #include \"CubebUtils.h\"
- #include \"UnderrunHandler.h\"
- #include \"VideoUtils.h\"
-@@ -297,11 +298,7 @@
-      return;
-    }
-
--  MonitorAutoLock mon(mMonitor);
--  if (InvokeCubeb(cubeb_stream_set_volume,
--                  aVolume * CubebUtils::GetVolumeScale()) != CUBEB_OK) {
--    LOGE(\"Could not change volume on cubeb stream.\");
--  }
-+  mSoftwareVolume = static_cast<float>(aVolume * CubebUtils::GetVolumeScale());
- }
-
- void AudioStream::SetStreamName(const nsAString& aStreamName) {
-@@ -663,6 +660,12 @@
-                                                mAudioThreadChanged);
-    }
-
-+  float volume = mSoftwareVolume;
-+  if (volume != 1.0f) {
-+    AudioBufferInPlaceScale(static_cast<AudioDataValue*>(aBuffer), volume,
-+                            static_cast<uint32_t>(aFrames) * mOutChannels);
-+  }
-+
-    mDumpFile.Write(static_cast<const AudioDataValue*>(aBuffer),
-                         aFrames * mOutChannels);
-
---- a/dom/media/AudioStream.h
-+++ b/dom/media/AudioStream.h
-@@ -367,6 +367,9 @@
-         MOZ_GUARDED_BY(mMonitor);
-    std::atomic<bool> mPlaybackComplete;
-    // Both written on the MDSM thread, read on the audio thread.
-+  // Volume applied in software in DataCallback instead of via
-+  // cubeb_stream_set_volume, so the system mixer never sees changes.
-+  std::atomic<float> mSoftwareVolume{1.0f};
-    std::atomic<float> mPlaybackRate;
-    std::atomic<bool> mPreservesPitch;
-    // Audio thread only
-"""
 
 
 @dataclass(frozen=True)
@@ -268,18 +217,6 @@ def detect_firefox_slot(ebuild_text: str) -> str:
     return "esr" if m.group(1).strip() else "rapid"
 
 
-def inject_firefox_patch(ebuild_text: str) -> str:
-    if FIREFOX_PATCH_LINE in ebuild_text:
-        return ebuild_text
-
-    match = re.search(r"(?m)^([ \t]*)eapply_user$", ebuild_text)
-    if not match:
-        raise RuntimeError("Unable to find eapply_user in firefox ebuild")
-    indent = match.group(1)
-    replacement = f"{indent}{FIREFOX_PATCH_LINE}\n\n{indent}eapply_user"
-    return re.sub(r"(?m)^([ \t]*)eapply_user$", replacement, ebuild_text, count=1)
-
-
 def manifest_line(kind: str, name: str, path: Path) -> str:
     size = path.stat().st_size
     return (
@@ -377,7 +314,6 @@ def update_firefox_source_mirror(root: Path, dry_run: bool) -> bool:
         if not ebuild_entries:
             raise RuntimeError("No firefox ebuilds found in Gentoo tree")
 
-        patched_ebuilds: dict[str, str] = {}
         all_ebuild_names: set[str] = set()
         latest_by_slot: dict[str, tuple[str, str]] = {}
         for entry in ebuild_entries:
@@ -403,17 +339,6 @@ def update_firefox_source_mirror(root: Path, dry_run: bool) -> bool:
             if required_slot not in latest_by_slot:
                 raise RuntimeError(f"Unable to find firefox {required_slot} ebuild upstream")
 
-        for slot in ("esr", "rapid"):
-            ebuild_name = latest_by_slot[slot][1]
-            ebuild_path = tmp_package / ebuild_name
-            patched_text = inject_firefox_patch(ebuild_path.read_text(encoding="utf-8"))
-            ebuild_path.write_text(patched_text, encoding="utf-8")
-            patched_ebuilds[slot] = ebuild_name
-
-        files_dir = tmp_package / "files"
-        files_dir.mkdir(exist_ok=True)
-        (files_dir / FIREFOX_PATCH_NAME).write_text(FIREFOX_PATCH_CONTENT, encoding="utf-8")
-
         rewrite_firefox_manifest(tmp_package, all_ebuild_names)
 
         if package_dir.exists() and directories_equal(package_dir, tmp_package):
@@ -423,7 +348,7 @@ def update_firefox_source_mirror(root: Path, dry_run: bool) -> bool:
         if dry_run:
             print(
                 f"[firefox] would update mirror ({now}) "
-                f"esr={patched_ebuilds['esr']} rapid={patched_ebuilds['rapid']}"
+                f"esr={latest_by_slot['esr'][1]} rapid={latest_by_slot['rapid'][1]}"
             )
             return True
 
@@ -431,8 +356,8 @@ def update_firefox_source_mirror(root: Path, dry_run: bool) -> bool:
             shutil.rmtree(package_dir)
         shutil.copytree(tmp_package, package_dir)
         print(
-            f"[firefox] mirrored Gentoo source ebuilds with patch "
-            f"esr={patched_ebuilds['esr']} rapid={patched_ebuilds['rapid']}"
+            f"[firefox] mirrored Gentoo source ebuilds "
+            f"esr={latest_by_slot['esr'][1]} rapid={latest_by_slot['rapid'][1]}"
         )
         return True
 

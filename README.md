@@ -66,7 +66,6 @@ What it does:
 - Renames ebuilds when version bumps are found.
 - Rebuilds package `Manifest` files (DIST and EBUILD hashes).
 - Mirrors Gentoo `www-client/firefox` source ebuilds/files daily.
-- Auto-injects a local Firefox audio software-volume patch into latest ESR and rapid ebuilds.
 - Commits and pushes changes automatically from GitHub Actions.
 - Prints unmanaged package paths that still require manual maintenance.
 
@@ -79,7 +78,7 @@ Currently automated package updates:
 - `games-action/lunarclient`
 - `app-editors/fresh-editor`
 - `media-sound/spotatui`
-- `www-client/firefox` (source mirror with patch injection for `:esr` and `:rapid`)
+- `www-client/firefox` (source mirror for `:esr` and `:rapid`)
 
 Run manually in CI:
 - GitHub Actions: `Auto Update Ebuilds` -> `Run workflow`
@@ -105,6 +104,11 @@ The updater currently auto-version/manifests these packages:
 - `games-action/lunarclient`
 - `app-editors/fresh-editor`
 - `media-sound/spotatui`
-- `www-client/firefox` (source mirror with patch injection for `:esr` and `:rapid`)
+- `www-client/firefox` (source mirror for `:esr` and `:rapid`)
+
+For local custom Firefox patches, use Portage user patches:
+- Place patch files in `/etc/portage/patches/www-client/firefox/`
+- Example: `/etc/portage/patches/www-client/firefox/software-volume.patch`
+- They are applied by `eapply_user` during build.
 
 The script also prints a list of unmanaged package paths and why they are not yet auto-updated. Those remain manual until a package-specific updater rule is added.

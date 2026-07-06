@@ -580,8 +580,6 @@ src_prepare() {
 	eapply "${WORKDIR}/firefox-patches"
 
 	# Allow user to apply any additional patches without modifing ebuild
-	eapply "${FILESDIR}/firefox-audio-software-volume.patch"
-
 	eapply_user
 
 	# Make cargo respect MAKEOPTS
