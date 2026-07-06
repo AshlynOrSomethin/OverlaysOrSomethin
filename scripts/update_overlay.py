@@ -23,9 +23,7 @@ GENTOO_FIREFOX_PATH = "www-client/firefox"
 FIREFOX_PATCH_NAME = "firefox-audio-software-volume.patch"
 FIREFOX_USER_PATCH_PATH = "/etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch"
 FIREFOX_PATCH_BLOCK = f"""\
-	if [[ -f \"{FIREFOX_USER_PATCH_PATH}\" ]]; then
-		eapply \"{FIREFOX_USER_PATCH_PATH}\"
-	else
+	if [[ ! -f \"{FIREFOX_USER_PATCH_PATH}\" ]]; then
 		if ! nonfatal eapply \"${{FILESDIR}}/{FIREFOX_PATCH_NAME}\"; then
 			ewarn \"Bundled software-volume patch no longer applies cleanly.\"
 			ewarn \"Place an updated patch at {FIREFOX_USER_PATCH_PATH} to override.\"
@@ -279,15 +277,28 @@ def detect_firefox_slot(ebuild_text: str) -> str:
 
 
 def inject_firefox_patch_logic(ebuild_text: str) -> str:
-    if FIREFOX_PATCH_NAME in ebuild_text or FIREFOX_USER_PATCH_PATH in ebuild_text:
-        return ebuild_text
-
     match = re.search(r"(?m)^([ \t]*)eapply_user$", ebuild_text)
     if not match:
         raise RuntimeError("Unable to find eapply_user in firefox ebuild")
     indent = match.group(1)
-    injected_block = FIREFOX_PATCH_BLOCK.replace("\t", indent)
-    replacement = f"{injected_block}\n{indent}eapply_user"
+
+    injected_block = FIREFOX_PATCH_BLOCK.replace("\t", indent).rstrip("\n")
+    legacy_block = (
+        f'{indent}if [[ -f "{FIREFOX_USER_PATCH_PATH}" ]]; then\n'
+        f'{indent}\teapply "{FIREFOX_USER_PATCH_PATH}"\n'
+        f"{indent}else\n"
+        f'{indent}\tif ! nonfatal eapply "${{FILESDIR}}/{FIREFOX_PATCH_NAME}"; then\n'
+        f'{indent}\t\tewarn "Bundled software-volume patch no longer applies cleanly."\n'
+        f'{indent}\t\tewarn "Place an updated patch at {FIREFOX_USER_PATCH_PATH} to override."\n'
+        f"{indent}\tfi\n"
+        f"{indent}fi"
+    )
+
+    # Remove previously injected block variants so the new block can be inserted once.
+    for existing in (legacy_block, injected_block):
+        ebuild_text = ebuild_text.replace(f"{existing}\n\n{indent}eapply_user", f"{indent}eapply_user")
+
+    replacement = f"{injected_block}\n\n{indent}eapply_user"
     return re.sub(r"(?m)^([ \t]*)eapply_user$", replacement, ebuild_text, count=1)
 
 
