@@ -4,12 +4,16 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 5 * * *"
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   update:
+    if: ${{ github.event_name != 'push' || github.actor == 'AshlynOrSomethin' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
