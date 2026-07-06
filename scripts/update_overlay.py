@@ -314,12 +314,17 @@ def rewrite_firefox_manifest(
             manifest_line("EBUILD", ebuild_name, package_dir / ebuild_name),
         )
 
-    upsert_manifest_line(
-        lines,
-        "AUX",
-        FIREFOX_PATCH_NAME,
-        manifest_line("AUX", FIREFOX_PATCH_NAME, package_dir / "files" / FIREFOX_PATCH_NAME),
-    )
+    files_dir = package_dir / "files"
+    for aux_path in sorted(files_dir.rglob("*")):
+        if not aux_path.is_file():
+            continue
+        aux_rel = aux_path.relative_to(files_dir).as_posix()
+        upsert_manifest_line(
+            lines,
+            "AUX",
+            aux_rel,
+            manifest_line("AUX", aux_rel, aux_path),
+        )
 
     manifest_path.write_text("".join(lines), encoding="utf-8")
 
