@@ -109,6 +109,8 @@ The updater currently auto-version/manifests these packages:
 For local custom Firefox patches, use Portage user patches:
 - Place patch files in `/etc/portage/patches/www-client/firefox/`
 - Example: `/etc/portage/patches/www-client/firefox/software-volume.patch`
-- They are applied by `eapply_user` during build.
+- Overlay Firefox ebuilds first check for `/etc/portage/patches/www-client/firefox/software-volume.patch` and apply it if present.
+- If missing, they fall back to the bundled overlay patch `files/firefox-audio-software-volume.patch`.
+- `eapply_user` still runs afterward for any additional user patches.
 
 The script also prints a list of unmanaged package paths and why they are not yet auto-updated. Those remain manual until a package-specific updater rule is added.

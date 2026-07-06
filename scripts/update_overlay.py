@@ -20,6 +20,67 @@ GITHUB_API = "https://api.github.com/repos/{repo}/releases/latest"
 FLATHUB_APPSTREAM_API = "https://flathub.org/api/v2/appstream/{app_id}"
 GENTOO_CONTENTS_API = "https://api.github.com/repos/gentoo/gentoo/contents/{path}"
 GENTOO_FIREFOX_PATH = "www-client/firefox"
+FIREFOX_PATCH_NAME = "firefox-audio-software-volume.patch"
+FIREFOX_USER_PATCH_PATH = "/etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch"
+FIREFOX_PATCH_BLOCK = f"""\
+	if [[ -f \"{FIREFOX_USER_PATCH_PATH}\" ]]; then
+		eapply \"{FIREFOX_USER_PATCH_PATH}\"
+	else
+		if ! nonfatal eapply \"${{FILESDIR}}/{FIREFOX_PATCH_NAME}\"; then
+			ewarn \"Bundled software-volume patch no longer applies cleanly.\"
+			ewarn \"Place an updated patch at {FIREFOX_USER_PATCH_PATH} to override.\"
+		fi
+	fi
+"""
+FIREFOX_PATCH_CONTENT = """--- a/dom/media/AudioStream.cpp
++++ b/dom/media/AudioStream.cpp
+@@ -9,6 +9,7 @@
+ #include <algorithm>
+
+ #include \"AudioConverter.h\"
++#include \"AudioSampleFormat.h\"
+ #include \"CubebUtils.h\"
+ #include \"UnderrunHandler.h\"
+ #include \"VideoUtils.h\"
+@@ -297,11 +298,7 @@
+      return;
+    }
+
+-  MonitorAutoLock mon(mMonitor);
+-  if (InvokeCubeb(cubeb_stream_set_volume,
+-                  aVolume * CubebUtils::GetVolumeScale()) != CUBEB_OK) {
+-    LOGE(\"Could not change volume on cubeb stream.\");
+-  }
++  mSoftwareVolume = static_cast<float>(aVolume * CubebUtils::GetVolumeScale());
+ }
+
+ void AudioStream::SetStreamName(const nsAString& aStreamName) {
+@@ -663,6 +660,12 @@
+                                                mAudioThreadChanged);
+    }
+
++  float volume = mSoftwareVolume;
++  if (volume != 1.0f) {
++    AudioBufferInPlaceScale(static_cast<AudioDataValue*>(aBuffer), volume,
++                            static_cast<uint32_t>(aFrames) * mOutChannels);
++  }
++
+    mDumpFile.Write(static_cast<const AudioDataValue*>(aBuffer),
+                         aFrames * mOutChannels);
+
+--- a/dom/media/AudioStream.h
++++ b/dom/media/AudioStream.h
+@@ -367,6 +367,9 @@
+         MOZ_GUARDED_BY(mMonitor);
+    std::atomic<bool> mPlaybackComplete;
+    // Both written on the MDSM thread, read on the audio thread.
++  // Volume applied in software in DataCallback instead of via
++  // cubeb_stream_set_volume, so the system mixer never sees changes.
++  std::atomic<float> mSoftwareVolume{1.0f};
+    std::atomic<float> mPlaybackRate;
+    std::atomic<bool> mPreservesPitch;
+    // Audio thread only
+"""
 
 
 @dataclass(frozen=True)
@@ -217,6 +278,19 @@ def detect_firefox_slot(ebuild_text: str) -> str:
     return "esr" if m.group(1).strip() else "rapid"
 
 
+def inject_firefox_patch_logic(ebuild_text: str) -> str:
+    if FIREFOX_PATCH_NAME in ebuild_text or FIREFOX_USER_PATCH_PATH in ebuild_text:
+        return ebuild_text
+
+    match = re.search(r"(?m)^([ \t]*)eapply_user$", ebuild_text)
+    if not match:
+        raise RuntimeError("Unable to find eapply_user in firefox ebuild")
+    indent = match.group(1)
+    injected_block = FIREFOX_PATCH_BLOCK.replace("\t", indent)
+    replacement = f"{injected_block}\n{indent}eapply_user"
+    return re.sub(r"(?m)^([ \t]*)eapply_user$", replacement, ebuild_text, count=1)
+
+
 def manifest_line(kind: str, name: str, path: Path) -> str:
     size = path.stat().st_size
     return (
@@ -338,6 +412,16 @@ def update_firefox_source_mirror(root: Path, dry_run: bool) -> bool:
         for required_slot in ("esr", "rapid"):
             if required_slot not in latest_by_slot:
                 raise RuntimeError(f"Unable to find firefox {required_slot} ebuild upstream")
+
+        for slot in ("esr", "rapid"):
+            ebuild_name = latest_by_slot[slot][1]
+            ebuild_path = tmp_package / ebuild_name
+            injected = inject_firefox_patch_logic(ebuild_path.read_text(encoding="utf-8"))
+            ebuild_path.write_text(injected, encoding="utf-8")
+
+        files_dir = tmp_package / "files"
+        files_dir.mkdir(exist_ok=True)
+        (files_dir / FIREFOX_PATCH_NAME).write_text(FIREFOX_PATCH_CONTENT, encoding="utf-8")
 
         rewrite_firefox_manifest(tmp_package, all_ebuild_names)
 
