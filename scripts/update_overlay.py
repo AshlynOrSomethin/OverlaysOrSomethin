@@ -168,6 +168,16 @@ def flathub_appstream_request(app_id: str) -> dict:
         return json.loads(resp.read().decode("utf-8"))
 
 
+def download_distfile(url: str, destination: Path) -> None:
+    headers = {
+        "User-Agent": "overlay-auto-updater",
+        "Accept": "application/octet-stream,*/*;q=0.8",
+    }
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, timeout=300) as resp, destination.open("wb") as out:  # noqa: S310
+        shutil.copyfileobj(resp, out)
+
+
 def find_asset(release: dict, pattern: str) -> Optional[dict]:
     rx = re.compile(pattern)
     for asset in release.get("assets", []):
@@ -276,7 +286,7 @@ def update_package(root: Path, cfg: PackageConfig, dry_run: bool) -> bool:
     # Always refresh Manifest to keep hashes valid if ebuild changed by hand.
     with tempfile.TemporaryDirectory() as td:
         distfile = Path(td) / source_name
-        urllib.request.urlretrieve(source_url, distfile)  # noqa: S310
+        download_distfile(source_url, distfile)
 
         dist_renamed = Path(td) / cfg.distfile_name(new_ver)
         distfile.rename(dist_renamed)
