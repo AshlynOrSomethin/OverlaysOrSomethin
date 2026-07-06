@@ -301,12 +301,12 @@ def upsert_manifest_line(lines: list[str], kind: str, name: str, new_line: str) 
 
 def rewrite_firefox_manifest(
     package_dir: Path,
-    patched_ebuild_names: set[str],
+    ebuild_names: set[str],
 ) -> None:
     manifest_path = package_dir / "Manifest"
     lines = manifest_path.read_text(encoding="utf-8").splitlines(keepends=True)
 
-    for ebuild_name in sorted(patched_ebuild_names):
+    for ebuild_name in sorted(ebuild_names):
         upsert_manifest_line(
             lines,
             "EBUILD",
@@ -373,9 +373,11 @@ def update_firefox_source_mirror(root: Path, dry_run: bool) -> bool:
             raise RuntimeError("No firefox ebuilds found in Gentoo tree")
 
         patched_ebuilds: dict[str, str] = {}
+        all_ebuild_names: set[str] = set()
         latest_by_slot: dict[str, tuple[str, str]] = {}
         for entry in ebuild_entries:
             name = entry["name"]
+            all_ebuild_names.add(name)
             download_url = entry.get("download_url")
             if not isinstance(download_url, str) or not download_url:
                 raise RuntimeError(f"Missing download_url for {GENTOO_FIREFOX_PATH}/{name}")
@@ -407,7 +409,7 @@ def update_firefox_source_mirror(root: Path, dry_run: bool) -> bool:
         files_dir.mkdir(exist_ok=True)
         (files_dir / FIREFOX_PATCH_NAME).write_text(FIREFOX_PATCH_CONTENT, encoding="utf-8")
 
-        rewrite_firefox_manifest(tmp_package, set(patched_ebuilds.values()))
+        rewrite_firefox_manifest(tmp_package, all_ebuild_names)
 
         if package_dir.exists() and directories_equal(package_dir, tmp_package):
             print(f"[firefox] no mirror changes ({now})")
