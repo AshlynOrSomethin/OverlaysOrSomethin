@@ -12,11 +12,65 @@ import shutil
 import tempfile
 import urllib.request
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Callable, Optional
 
 GITHUB_API = "https://api.github.com/repos/{repo}/releases/latest"
 FLATHUB_APPSTREAM_API = "https://flathub.org/api/v2/appstream/{app_id}"
+GENTOO_CONTENTS_API = "https://api.github.com/repos/gentoo/gentoo/contents/{path}"
+GENTOO_FIREFOX_PATH = "www-client/firefox"
+FIREFOX_PATCH_NAME = "firefox-audio-software-volume.patch"
+FIREFOX_PATCH_LINE = f'eapply "${{FILESDIR}}/{FIREFOX_PATCH_NAME}"'
+FIREFOX_PATCH_CONTENT = """--- a/dom/media/AudioStream.cpp
++++ b/dom/media/AudioStream.cpp
+@@ -9,6 +9,7 @@
+ #include <algorithm>
+
+ #include \"AudioConverter.h\"
++#include \"AudioSampleFormat.h\"
+ #include \"CubebUtils.h\"
+ #include \"UnderrunHandler.h\"
+ #include \"VideoUtils.h\"
+@@ -297,11 +298,7 @@
+      return;
+    }
+
+-  MonitorAutoLock mon(mMonitor);
+-  if (InvokeCubeb(cubeb_stream_set_volume,
+-                  aVolume * CubebUtils::GetVolumeScale()) != CUBEB_OK) {
+-    LOGE(\"Could not change volume on cubeb stream.\");
+-  }
++  mSoftwareVolume = static_cast<float>(aVolume * CubebUtils::GetVolumeScale());
+ }
+
+ void AudioStream::SetStreamName(const nsAString& aStreamName) {
+@@ -663,6 +660,12 @@
+                                                mAudioThreadChanged);
+    }
+
++  float volume = mSoftwareVolume;
++  if (volume != 1.0f) {
++    AudioBufferInPlaceScale(static_cast<AudioDataValue*>(aBuffer), volume,
++                            static_cast<uint32_t>(aFrames) * mOutChannels);
++  }
++
+    mDumpFile.Write(static_cast<const AudioDataValue*>(aBuffer),
+                         aFrames * mOutChannels);
+
+--- a/dom/media/AudioStream.h
++++ b/dom/media/AudioStream.h
+@@ -367,6 +367,9 @@
+         MOZ_GUARDED_BY(mMonitor);
+    std::atomic<bool> mPlaybackComplete;
+    // Both written on the MDSM thread, read on the audio thread.
++  // Volume applied in software in DataCallback instead of via
++  // cubeb_stream_set_volume, so the system mixer never sees changes.
++  std::atomic<float> mSoftwareVolume{1.0f};
+    std::atomic<float> mPlaybackRate;
+    std::atomic<bool> mPreservesPitch;
+    // Audio thread only
+"""
 
 
 @dataclass(frozen=True)
@@ -48,6 +102,18 @@ UNMANAGED_PACKAGES: dict[str, str] = {
     "net-print/brother-hll2305w": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
     "media-fonts/nerd-fonts": "Very large multi-dist Manifest and ebuild-specific versioning logic require dedicated updater flow.",
 }
+
+
+def version_sort_key(version: str) -> tuple[tuple[int, object], ...]:
+    key: list[tuple[int, object]] = []
+    for token in re.split(r"([0-9]+)", version):
+        if not token:
+            continue
+        if token.isdigit():
+            key.append((1, int(token)))
+        else:
+            key.append((0, token))
+    return tuple(key)
 
 
 CONFIGS: tuple[PackageConfig, ...] = (
@@ -157,6 +223,211 @@ def github_request(url: str) -> dict:
     )
     with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
         return json.loads(resp.read().decode("utf-8"))
+
+
+def http_get_bytes(url: str, timeout: int = 60) -> bytes:
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "overlay-auto-updater", "Accept": "*/*"},
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+        return resp.read()
+
+
+def http_get_text(url: str, timeout: int = 60) -> str:
+    return http_get_bytes(url, timeout=timeout).decode("utf-8")
+
+
+def gentoo_contents(path: str) -> list[dict]:
+    data = github_request(GENTOO_CONTENTS_API.format(path=path))
+    if not isinstance(data, list):
+        raise RuntimeError(f"Unexpected GitHub contents response for {path}")
+    return data
+
+
+def sync_gentoo_directory(src_path: str, dest_dir: Path) -> None:
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    for entry in gentoo_contents(src_path):
+        entry_type = entry.get("type")
+        name = entry.get("name")
+        if not isinstance(name, str):
+            continue
+        if entry_type == "file":
+            download_url = entry.get("download_url")
+            if not isinstance(download_url, str) or not download_url:
+                raise RuntimeError(f"Missing download_url for {src_path}/{name}")
+            (dest_dir / name).write_bytes(http_get_bytes(download_url, timeout=300))
+        elif entry_type == "dir":
+            sync_gentoo_directory(f"{src_path}/{name}", dest_dir / name)
+
+
+def detect_firefox_slot(ebuild_text: str) -> str:
+    m = re.search(r"(?m)^MOZ_ESR=(.*)$", ebuild_text)
+    if not m:
+        raise RuntimeError("Unable to detect MOZ_ESR from firefox ebuild")
+    return "esr" if m.group(1).strip() else "rapid"
+
+
+def inject_firefox_patch(ebuild_text: str) -> str:
+    if FIREFOX_PATCH_LINE in ebuild_text:
+        return ebuild_text
+
+    match = re.search(r"(?m)^([ \t]*)eapply_user$", ebuild_text)
+    if not match:
+        raise RuntimeError("Unable to find eapply_user in firefox ebuild")
+    indent = match.group(1)
+    replacement = f"{indent}{FIREFOX_PATCH_LINE}\n\n{indent}eapply_user"
+    return re.sub(r"(?m)^([ \t]*)eapply_user$", replacement, ebuild_text, count=1)
+
+
+def manifest_line(kind: str, name: str, path: Path) -> str:
+    size = path.stat().st_size
+    return (
+        f"{kind} {name} {size} "
+        f"BLAKE2B {blake2b_file(path)} "
+        f"SHA512 {sha512_file(path)}\n"
+    )
+
+
+def upsert_manifest_line(lines: list[str], kind: str, name: str, new_line: str) -> bool:
+    prefix = f"{kind} {name} "
+    for i, line in enumerate(lines):
+        if line.startswith(prefix):
+            lines[i] = new_line
+            return True
+    lines.append(new_line)
+    return False
+
+
+def rewrite_firefox_manifest(
+    package_dir: Path,
+    patched_ebuild_names: set[str],
+) -> None:
+    manifest_path = package_dir / "Manifest"
+    lines = manifest_path.read_text(encoding="utf-8").splitlines(keepends=True)
+
+    for ebuild_name in sorted(patched_ebuild_names):
+        upsert_manifest_line(
+            lines,
+            "EBUILD",
+            ebuild_name,
+            manifest_line("EBUILD", ebuild_name, package_dir / ebuild_name),
+        )
+
+    upsert_manifest_line(
+        lines,
+        "AUX",
+        FIREFOX_PATCH_NAME,
+        manifest_line("AUX", FIREFOX_PATCH_NAME, package_dir / "files" / FIREFOX_PATCH_NAME),
+    )
+
+    manifest_path.write_text("".join(lines), encoding="utf-8")
+
+
+def directories_equal(left: Path, right: Path) -> bool:
+    left_files = {
+        p.relative_to(left).as_posix(): p
+        for p in left.rglob("*")
+        if p.is_file()
+    }
+    right_files = {
+        p.relative_to(right).as_posix(): p
+        for p in right.rglob("*")
+        if p.is_file()
+    }
+    if set(left_files) != set(right_files):
+        return False
+
+    for rel_path, left_file in left_files.items():
+        if left_file.read_bytes() != right_files[rel_path].read_bytes():
+            return False
+    return True
+
+
+def update_firefox_source_mirror(root: Path, dry_run: bool) -> bool:
+    package_dir = root / GENTOO_FIREFOX_PATH
+    now = datetime.now(UTC).strftime("%Y-%m-%d")
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp_package = Path(td) / "firefox"
+        tmp_package.mkdir(parents=True, exist_ok=True)
+
+        root_entries = gentoo_contents(GENTOO_FIREFOX_PATH)
+
+        ebuild_entries: list[dict] = []
+        for entry in root_entries:
+            name = entry.get("name")
+            if not isinstance(name, str):
+                continue
+            if entry.get("type") == "file" and name.endswith(".ebuild"):
+                ebuild_entries.append(entry)
+            elif entry.get("type") == "file":
+                download_url = entry.get("download_url")
+                if not isinstance(download_url, str) or not download_url:
+                    raise RuntimeError(f"Missing download_url for {GENTOO_FIREFOX_PATH}/{name}")
+                (tmp_package / name).write_bytes(http_get_bytes(download_url, timeout=300))
+            elif entry.get("type") == "dir" and name == "files":
+                sync_gentoo_directory(f"{GENTOO_FIREFOX_PATH}/files", tmp_package / "files")
+
+        if not ebuild_entries:
+            raise RuntimeError("No firefox ebuilds found in Gentoo tree")
+
+        patched_ebuilds: dict[str, str] = {}
+        latest_by_slot: dict[str, tuple[str, str]] = {}
+        for entry in ebuild_entries:
+            name = entry["name"]
+            download_url = entry.get("download_url")
+            if not isinstance(download_url, str) or not download_url:
+                raise RuntimeError(f"Missing download_url for {GENTOO_FIREFOX_PATH}/{name}")
+            ebuild_text = http_get_text(download_url, timeout=300)
+
+            m = re.match(r"^firefox-(.+)\.ebuild$", name)
+            if not m:
+                continue
+            version = m.group(1)
+            slot = detect_firefox_slot(ebuild_text)
+            current = latest_by_slot.get(slot)
+            if current is None or version_sort_key(version) > version_sort_key(current[0]):
+                latest_by_slot[slot] = (version, name)
+
+            (tmp_package / name).write_text(ebuild_text, encoding="utf-8")
+
+        for required_slot in ("esr", "rapid"):
+            if required_slot not in latest_by_slot:
+                raise RuntimeError(f"Unable to find firefox {required_slot} ebuild upstream")
+
+        for slot in ("esr", "rapid"):
+            ebuild_name = latest_by_slot[slot][1]
+            ebuild_path = tmp_package / ebuild_name
+            patched_text = inject_firefox_patch(ebuild_path.read_text(encoding="utf-8"))
+            ebuild_path.write_text(patched_text, encoding="utf-8")
+            patched_ebuilds[slot] = ebuild_name
+
+        files_dir = tmp_package / "files"
+        files_dir.mkdir(exist_ok=True)
+        (files_dir / FIREFOX_PATCH_NAME).write_text(FIREFOX_PATCH_CONTENT, encoding="utf-8")
+
+        rewrite_firefox_manifest(tmp_package, set(patched_ebuilds.values()))
+
+        if package_dir.exists() and directories_equal(package_dir, tmp_package):
+            print(f"[firefox] no mirror changes ({now})")
+            return False
+
+        if dry_run:
+            print(
+                f"[firefox] would update mirror ({now}) "
+                f"esr={patched_ebuilds['esr']} rapid={patched_ebuilds['rapid']}"
+            )
+            return True
+
+        if package_dir.exists():
+            shutil.rmtree(package_dir)
+        shutil.copytree(tmp_package, package_dir)
+        print(
+            f"[firefox] mirrored Gentoo source ebuilds with patch "
+            f"esr={patched_ebuilds['esr']} rapid={patched_ebuilds['rapid']}"
+        )
+        return True
 
 
 def flathub_appstream_request(app_id: str) -> dict:
@@ -323,6 +594,13 @@ def main() -> int:
         except Exception as exc:
             failures.append((cfg.package_name, str(exc)))
             print(f"[{cfg.package_name}] ERROR: {exc}")
+
+    try:
+        firefox_changed = update_firefox_source_mirror(root, args.dry_run)
+        any_changed = any_changed or firefox_changed
+    except Exception as exc:
+        failures.append(("firefox", str(exc)))
+        print(f"[firefox] ERROR: {exc}")
 
     print("\nUnmanaged package paths:")
     for path, reason in UNMANAGED_PACKAGES.items():

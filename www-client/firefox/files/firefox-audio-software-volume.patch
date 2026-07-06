@@ -1,0 +1,48 @@
+--- a/dom/media/AudioStream.cpp
++++ b/dom/media/AudioStream.cpp
+@@ -9,6 +9,7 @@
+ #include <algorithm>
+
+ #include "AudioConverter.h"
++#include "AudioSampleFormat.h"
+ #include "CubebUtils.h"
+ #include "UnderrunHandler.h"
+ #include "VideoUtils.h"
+@@ -297,11 +298,7 @@
+      return;
+    }
+
+-  MonitorAutoLock mon(mMonitor);
+-  if (InvokeCubeb(cubeb_stream_set_volume,
+-                  aVolume * CubebUtils::GetVolumeScale()) != CUBEB_OK) {
+-    LOGE("Could not change volume on cubeb stream.");
+-  }
++  mSoftwareVolume = static_cast<float>(aVolume * CubebUtils::GetVolumeScale());
+ }
+
+ void AudioStream::SetStreamName(const nsAString& aStreamName) {
+@@ -663,6 +660,12 @@
+                                                mAudioThreadChanged);
+    }
+
++  float volume = mSoftwareVolume;
++  if (volume != 1.0f) {
++    AudioBufferInPlaceScale(static_cast<AudioDataValue*>(aBuffer), volume,
++                            static_cast<uint32_t>(aFrames) * mOutChannels);
++  }
++
+    mDumpFile.Write(static_cast<const AudioDataValue*>(aBuffer),
+                         aFrames * mOutChannels);
+
+--- a/dom/media/AudioStream.h
++++ b/dom/media/AudioStream.h
+@@ -367,6 +367,9 @@
+         MOZ_GUARDED_BY(mMonitor);
+    std::atomic<bool> mPlaybackComplete;
+    // Both written on the MDSM thread, read on the audio thread.
++  // Volume applied in software in DataCallback instead of via
++  // cubeb_stream_set_volume, so the system mixer never sees changes.
++  std::atomic<float> mSoftwareVolume{1.0f};
+    std::atomic<float> mPlaybackRate;
+    std::atomic<bool> mPreservesPitch;
+    // Audio thread only

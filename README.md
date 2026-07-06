@@ -65,6 +65,8 @@ What it does:
 - Checks latest GitHub releases for supported packages.
 - Renames ebuilds when version bumps are found.
 - Rebuilds package `Manifest` files (DIST and EBUILD hashes).
+- Mirrors Gentoo `www-client/firefox` source ebuilds/files daily.
+- Auto-injects a local Firefox audio software-volume patch into latest ESR and rapid ebuilds.
 - Commits and pushes changes automatically from GitHub Actions.
 - Prints unmanaged package paths that still require manual maintenance.
 
@@ -77,6 +79,7 @@ Currently automated package updates:
 - `games-action/lunarclient`
 - `app-editors/fresh-editor`
 - `media-sound/spotatui`
+- `www-client/firefox` (source mirror with patch injection for `:esr` and `:rapid`)
 
 Run manually in CI:
 - GitHub Actions: `Auto Update Ebuilds` -> `Run workflow`
@@ -102,5 +105,6 @@ The updater currently auto-version/manifests these packages:
 - `games-action/lunarclient`
 - `app-editors/fresh-editor`
 - `media-sound/spotatui`
+- `www-client/firefox` (source mirror with patch injection for `:esr` and `:rapid`)
 
 The script also prints a list of unmanaged package paths and why they are not yet auto-updated. Those remain manual until a package-specific updater rule is added.
