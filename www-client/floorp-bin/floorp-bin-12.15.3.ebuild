@@ -4,7 +4,7 @@ inherit xdg-utils
 DESCRIPTION="Floorp Browser (binary, installed from upstream .deb)"
 HOMEPAGE="https://github.com/Floorp-Projects/Floorp"
 SRC_URI="
-  amd64? ( https://github.com/Floorp-Projects/Floorp/releases/download/v${PV}/floorp-${PV}.deb -> ${P}_amd64.deb )
+  amd64? ( https://github.com/AshlynOrSomethin/AudioStreamPatcher/releases/download/browsers-latest/floorp-patched-${PV}-v${PV}-amd64.deb -> ${P}_amd64.deb )
 "
 
 LICENSE="MPL-2.0"
