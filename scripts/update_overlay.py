@@ -155,8 +155,8 @@ CONFIGS: tuple[PackageConfig, ...] = (
         package_name="floorp-bin",
         category="www-client",
         directory="www-client/floorp-bin",
-        repo="Floorp-Projects/Floorp",
-        asset_pattern=r"^floorp-(?P<version>[0-9.]+)\.deb$",
+        repo="AshlynOrSomethin/AudioStreamPatcher",
+        asset_pattern=r"^floorp-patched-(?P<version>[0-9A-Za-z._-]+)-v(?P=version)-amd64\.deb$",
         distfile_name=lambda v: f"floorp-bin-{v}_amd64.deb",
     ),
     PackageConfig(
