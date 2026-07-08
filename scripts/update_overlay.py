@@ -168,6 +168,22 @@ CONFIGS: tuple[PackageConfig, ...] = (
         distfile_name=lambda v: f"zen-bin-{v}.AppImage",
     ),
     PackageConfig(
+        package_name="firefox-bin",
+        category="www-client",
+        directory="www-client/firefox-bin",
+        repo="AshlynOrSomethin/AudioStreamPatcher",
+        asset_pattern=r"^firefox-patched-(?P<version>[0-9.]+)-amd64\.deb$",
+        distfile_name=lambda v: f"firefox-bin-{v}_amd64.deb",
+    ),
+    PackageConfig(
+        package_name="firefox-esr-bin",
+        category="www-client",
+        directory="www-client/firefox-esr-bin",
+        repo="AshlynOrSomethin/AudioStreamPatcher",
+        asset_pattern=r"^firefox-esr-patched-(?P<version>[0-9.]+esr)-amd64\.deb$",
+        distfile_name=lambda v: f"firefox-esr-bin-{v}_amd64.deb",
+    ),
+    PackageConfig(
         package_name="lunarclient",
         category="games-action",
         directory="games-action/lunarclient",

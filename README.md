@@ -75,6 +75,8 @@ Currently automated package updates:
 - `net-im/vesktop`
 - `www-client/floorp-bin`
 - `www-client/zen-bin`
+- `www-client/firefox-bin`
+- `www-client/firefox-esr-bin`
 - `games-action/lunarclient`
 - `app-editors/fresh-editor`
 - `media-sound/spotatui`
@@ -101,6 +103,8 @@ The updater currently auto-version/manifests these packages:
 - `net-im/vesktop`
 - `www-client/floorp-bin`
 - `www-client/zen-bin`
+- `www-client/firefox-bin`
+- `www-client/firefox-esr-bin`
 - `games-action/lunarclient`
 - `app-editors/fresh-editor`
 - `media-sound/spotatui`
