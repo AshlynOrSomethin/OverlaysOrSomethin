@@ -163,10 +163,8 @@ CONFIGS: tuple[PackageConfig, ...] = (
         package_name="zen-bin",
         category="www-client",
         directory="www-client/zen-bin",
-        repo="zen-browser/desktop",
-        asset_pattern=r"^zen-x86_64\.AppImage$",
-        version_from_tag=True,
-        tag_strip_prefix="",
+        repo="AshlynOrSomethin/AudioStreamPatcher",
+        asset_pattern=r"^zen-patched-(?P<version>[0-9A-Za-z._-]+)-x86_64\.AppImage$",
         distfile_name=lambda v: f"zen-bin-{v}.AppImage",
     ),
     PackageConfig(

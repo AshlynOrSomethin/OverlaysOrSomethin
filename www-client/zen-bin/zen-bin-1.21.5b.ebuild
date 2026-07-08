@@ -4,7 +4,7 @@ inherit xdg-utils
 DESCRIPTION="Zen Browser (binary AppImage)"
 HOMEPAGE="https://github.com/zen-browser/desktop"
 SRC_URI="
-  amd64? ( https://github.com/zen-browser/desktop/releases/download/${PV}/zen-x86_64.AppImage -> ${P}.AppImage )
+  amd64? ( https://github.com/AshlynOrSomethin/AudioStreamPatcher/releases/download/browsers-latest/zen-patched-${PV}-x86_64.AppImage -> ${P}.AppImage )
 "
 
 LICENSE="MPL-2.0"
