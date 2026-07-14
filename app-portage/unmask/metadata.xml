@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+  <maintainer type="person">
+    <email>by3021@outlook.com</email>
+    <name>AshlynOrSomethin</name>
+  </maintainer>
+  <upstream>
+    <remote-id type="github">AshlynOrSomethin/gentoo-unmask</remote-id>
+  </upstream>
+  <longdescription>
+    Installs a helper that appends ~amd64 keyword entries to
+    /etc/portage/package.accept_keywords for a given package atom.
+  </longdescription>
+</pkgmetadata>
