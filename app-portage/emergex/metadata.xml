@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+  <maintainer type="person">
+    <email>by3021@outlook.com</email>
+    <name>AshlynOrSomethin</name>
+  </maintainer>
+  <upstream>
+    <remote-id type="github">AshlynOrSomethin/gentoo-unmask</remote-id>
+  </upstream>
+  <longdescription>
+    Installs a wrapper around emerge that enables autounmask writes,
+    continues automatically, and runs etc-update in automode after the merge.
+  </longdescription>
+</pkgmetadata>
