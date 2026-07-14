@@ -367,6 +367,31 @@ def rewrite_firefox_manifest(
     manifest_path.write_text("".join(lines), encoding="utf-8")
 
 
+def rewrite_package_manifest(package_dir: Path) -> None:
+    manifest_path = package_dir / "Manifest"
+    lines = manifest_path.read_text(encoding="utf-8").splitlines(keepends=True)
+
+    # Keep DIST/AUX entries from mirrored source, but always ensure local file digests exist.
+    for ebuild_path in sorted(package_dir.glob("*.ebuild")):
+        upsert_manifest_line(
+            lines,
+            "EBUILD",
+            ebuild_path.name,
+            manifest_line("EBUILD", ebuild_path.name, ebuild_path),
+        )
+
+    metadata_path = package_dir / "metadata.xml"
+    if metadata_path.is_file():
+        upsert_manifest_line(
+            lines,
+            "MISC",
+            "metadata.xml",
+            manifest_line("MISC", "metadata.xml", metadata_path),
+        )
+
+    manifest_path.write_text("".join(lines), encoding="utf-8")
+
+
 def directories_equal(left: Path, right: Path) -> bool:
     left_files = {
         p.relative_to(left).as_posix(): p
@@ -404,6 +429,10 @@ def update_wine_cachyos_mirror(root: Path, dry_run: bool) -> bool:
         if not source_dir.is_dir():
             raise RuntimeError(f"Missing mirrored path in source repository: {NBDY_WINE_PATH}")
 
+        staged_dir = Path(td) / "wine-cachyos"
+        shutil.copytree(source_dir, staged_dir)
+        rewrite_package_manifest(staged_dir)
+
         source_commit = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
             cwd=mirror_repo,
@@ -412,7 +441,7 @@ def update_wine_cachyos_mirror(root: Path, dry_run: bool) -> bool:
             text=True,
         ).stdout.strip()
 
-        if package_dir.exists() and directories_equal(package_dir, source_dir):
+        if package_dir.exists() and directories_equal(package_dir, staged_dir):
             print(f"[wine-cachyos] no mirror changes ({now})")
             return False
 
@@ -422,7 +451,7 @@ def update_wine_cachyos_mirror(root: Path, dry_run: bool) -> bool:
 
         if package_dir.exists():
             shutil.rmtree(package_dir)
-        shutil.copytree(source_dir, package_dir)
+        shutil.copytree(staged_dir, package_dir)
 
         print(f"[wine-cachyos] mirrored nbdy_overlay source={source_commit}")
         return True
