@@ -13,6 +13,7 @@ fi
 
 emerge_bin=${EMERGEX_EMERGE_BIN:-emerge}
 etc_update_bin=${EMERGEX_ETC_UPDATE_BIN:-etc-update}
+unmask_bin=${EMERGEX_UNMASK_BIN:-unmask}
 root_helper=${EMERGEX_ROOT_HELPER:-sudo}
 
 run_as_root() {
@@ -23,7 +24,68 @@ run_as_root() {
     fi
 }
 
-run_as_root "$emerge_bin" --autounmask-write --autounmask-continue "$@"
+run_emerge_with_log() {
+    local log_file=$1
+    shift
+
+    set +e
+    run_as_root "$emerge_bin" --autounmask-write --autounmask-continue "$@" 2>&1 | tee "$log_file"
+    local rc=${PIPESTATUS[0]}
+    set -e
+
+    return "$rc"
+}
+
+atom_from_cpv() {
+    local cpv=$1
+
+    cpv=${cpv%%::*}
+    cpv=${cpv%-r[0-9]*}
+    printf '%s\n' "${cpv%-[0-9]*}"
+}
+
+auto_unmask_from_log() {
+    local log_file=$1
+    local line cpv atom
+    local -A seen=()
+    local atoms=()
+
+    while IFS= read -r line; do
+        cpv=$(printf '%s\n' "$line" | sed -E 's/^- ([^ ]+) .*/\1/')
+        atom=$(atom_from_cpv "$cpv")
+
+        if [[ $atom == */* && -z ${seen["$atom"]+x} ]]; then
+            atoms+=("$atom")
+            seen["$atom"]=1
+        fi
+    done < <(grep -E '^- [^ ]+/[^ ]+ .*\(masked by: ~amd64 keyword\)' "$log_file" || true)
+
+    if [[ ${#atoms[@]} -eq 0 ]]; then
+        return 1
+    fi
+
+    for atom in "${atoms[@]}"; do
+        run_as_root "$unmask_bin" "$atom"
+    done
+
+    return 0
+}
+
+args=("$@")
+first_log=$(mktemp)
+
+if ! run_emerge_with_log "$first_log" "${args[@]}"; then
+    if auto_unmask_from_log "$first_log"; then
+        second_log=$(mktemp)
+        run_emerge_with_log "$second_log" "${args[@]}"
+        rm -f "$second_log"
+    else
+        rm -f "$first_log"
+        exit 1
+    fi
+fi
+
+rm -f "$first_log"
 
 if [[ ${EMERGEX_SKIP_ETC_UPDATE:-0} != 1 ]]; then
     run_as_root "$etc_update_bin" --automode -5
