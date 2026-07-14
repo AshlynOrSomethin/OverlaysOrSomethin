@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>n3otrax@xenonet.cc</email>
+		<name>N3oTraX</name>
+	</maintainer>
+	<use>
+		<flag name="cpu_flags_x86_avx2">Use AVX2 optimized build (x86_64_v3)</flag>
+	</use>
+	<longdescription lang="en">
+		CachyOS Proton build with NTSync support and performance optimizations.
+		Requires kernel 6.14+ for NTSync. Set PROTON_USE_NTSYNC=1 to enable.
+	</longdescription>
+	<upstream>
+		<remote-id type="github">CachyOS/proton-cachyos</remote-id>
+	</upstream>
+</pkgmetadata>
