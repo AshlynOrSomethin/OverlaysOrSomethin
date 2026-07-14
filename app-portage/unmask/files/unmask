@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage() {
-    echo "Usage: unmask <category/package>" >&2
+    echo "Usage: unmask <atom>" >&2
     exit 1
 }
 
@@ -14,14 +14,14 @@ fi
 atom=$1
 
 if [[ $atom != */* ]]; then
-    echo "Expected a package atom like category/package" >&2
+    echo "Expected a package atom like category/package or =category/package-version" >&2
     exit 1
 fi
 
 category=${atom%%/*}
 config_root=${PORTAGE_CONFIG_ROOT:-/etc/portage}
 keywords_path=${config_root}/package.accept_keywords
-entry="=${atom} ~amd64"
+entry="${atom} ~amd64"
 
 if [[ -d $keywords_path ]]; then
     target=${keywords_path}/${category}
