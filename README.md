@@ -73,6 +73,7 @@ Currently automated package updates:
 - `app-admin/xpipe-bin`
 - `net-im/equibop`
 - `net-im/vesktop`
+- `app-emulation/wine-cachyos` (directory mirror from `NoBodyZ/nbdy_overlay`)
 - `www-client/floorp-bin`
 - `www-client/zen-bin`
 - `www-client/firefox-bin`
@@ -101,6 +102,7 @@ The updater currently auto-version/manifests these packages:
 - `app-admin/xpipe-bin`
 - `net-im/equibop`
 - `net-im/vesktop`
+- `app-emulation/wine-cachyos` (directory mirror from `NoBodyZ/nbdy_overlay`)
 - `www-client/floorp-bin`
 - `www-client/zen-bin`
 - `www-client/firefox-bin`

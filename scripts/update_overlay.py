@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import tempfile
 import urllib.request
 from dataclasses import dataclass
@@ -20,6 +21,8 @@ GITHUB_API = "https://api.github.com/repos/{repo}/releases/latest"
 FLATHUB_APPSTREAM_API = "https://flathub.org/api/v2/appstream/{app_id}"
 GENTOO_CONTENTS_API = "https://api.github.com/repos/gentoo/gentoo/contents/{path}"
 GENTOO_FIREFOX_PATH = "www-client/firefox"
+NBDY_OVERLAY_REPO = "https://codeberg.org/NoBodyZ/nbdy_overlay.git"
+NBDY_WINE_PATH = "app-emulation/wine-cachyos"
 FIREFOX_PATCH_NAME = "firefox-audio-software-volume.patch"
 FIREFOX_USER_PATCH_PATH = "/etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch"
 FIREFOX_PATCH_BLOCK = f"""\
@@ -98,7 +101,6 @@ class PackageConfig:
 
 
 UNMANAGED_PACKAGES: dict[str, str] = {
-    "app-emulation/wine-cachyos": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
     "app-misc/fetchcord": "Upstream release assets do not currently provide a stable Linux binary artifact to package as -bin.",
     "app-editors/sublime-merge": "Can be automated, but currently kept manual because upstream build channel/URL policy can vary.",
     "games-action/hytale-launcher-bin": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
@@ -385,6 +387,47 @@ def directories_equal(left: Path, right: Path) -> bool:
     return True
 
 
+def update_wine_cachyos_mirror(root: Path, dry_run: bool) -> bool:
+    package_dir = root / NBDY_WINE_PATH
+    now = datetime.now(UTC).strftime("%Y-%m-%d")
+
+    with tempfile.TemporaryDirectory() as td:
+        mirror_repo = Path(td) / "nbdy_overlay"
+        subprocess.run(
+            ["git", "clone", "--depth", "1", NBDY_OVERLAY_REPO, str(mirror_repo)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        source_dir = mirror_repo / NBDY_WINE_PATH
+        if not source_dir.is_dir():
+            raise RuntimeError(f"Missing mirrored path in source repository: {NBDY_WINE_PATH}")
+
+        source_commit = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=mirror_repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+        if package_dir.exists() and directories_equal(package_dir, source_dir):
+            print(f"[wine-cachyos] no mirror changes ({now})")
+            return False
+
+        if dry_run:
+            print(f"[wine-cachyos] would update mirror ({now}) source={source_commit}")
+            return True
+
+        if package_dir.exists():
+            shutil.rmtree(package_dir)
+        shutil.copytree(source_dir, package_dir)
+
+        print(f"[wine-cachyos] mirrored nbdy_overlay source={source_commit}")
+        return True
+
+
 def update_firefox_source_mirror(root: Path, dry_run: bool) -> bool:
     package_dir = root / GENTOO_FIREFOX_PATH
     now = datetime.now(UTC).strftime("%Y-%m-%d")
@@ -642,6 +685,13 @@ def main() -> int:
     except Exception as exc:
         failures.append(("firefox", str(exc)))
         print(f"[firefox] ERROR: {exc}")
+
+    try:
+        wine_changed = update_wine_cachyos_mirror(root, args.dry_run)
+        any_changed = any_changed or wine_changed
+    except Exception as exc:
+        failures.append(("wine-cachyos", str(exc)))
+        print(f"[wine-cachyos] ERROR: {exc}")
 
     print("\nUnmanaged package paths:")
     for path, reason in UNMANAGED_PACKAGES.items():
