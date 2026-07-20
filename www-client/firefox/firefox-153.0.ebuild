@@ -3,7 +3,7 @@
 
 EAPI=8
 
-FIREFOX_PATCHSET="firefox-152-patches-03.tar.xz"
+FIREFOX_PATCHSET="firefox-153-patches-01.tar.xz"
 
 LLVM_COMPAT=( 21 22 )
 
@@ -125,7 +125,7 @@ COMMON_DEPEND="${FF_ONLY_DEPEND}
 	>=app-accessibility/at-spi2-core-2.46.0:2
 	dev-libs/glib:2
 	dev-libs/libffi:=
-	>=dev-libs/nss-3.124
+	>=dev-libs/nss-3.125
 	>=dev-libs/nspr-4.39
 	media-libs/alsa-lib
 	media-libs/fontconfig
@@ -580,6 +580,13 @@ src_prepare() {
 	eapply "${WORKDIR}/firefox-patches"
 
 	# Allow user to apply any additional patches without modifing ebuild
+	if [[ ! -f "/etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch" ]]; then
+		if ! nonfatal eapply "${FILESDIR}/firefox-audio-software-volume.patch"; then
+			ewarn "Bundled software-volume patch no longer applies cleanly."
+			ewarn "Place an updated patch at /etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch to override."
+		fi
+	fi
+
 	eapply_user
 
 	# Make cargo respect MAKEOPTS
@@ -968,7 +975,7 @@ src_configure() {
 		# Avoid compressing just-built instrumented Firefox with
 		# high levels of compression. Just use tar as a container
 		# to save >=10 minutes.
-		export MOZ_PKG_FORMAT=tar
+		export MOZ_PKG_FORMAT=TAR
 
 		if use clang ; then
 			# Used in build/pgo/profileserver.py
