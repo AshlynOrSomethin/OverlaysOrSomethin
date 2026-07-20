@@ -419,6 +419,19 @@ def rewrite_package_manifest(package_dir: Path) -> None:
             manifest_line("MISC", "metadata.xml", metadata_path),
         )
 
+    files_dir = package_dir / "files"
+    if files_dir.is_dir():
+        for aux_path in sorted(files_dir.rglob("*")):
+            if not aux_path.is_file():
+                continue
+            aux_rel = aux_path.relative_to(files_dir).as_posix()
+            upsert_manifest_line(
+                lines,
+                "AUX",
+                aux_rel,
+                manifest_line("AUX", aux_rel, aux_path),
+            )
+
     manifest_path.write_text("".join(lines), encoding="utf-8")
 
 
@@ -469,23 +482,24 @@ fi
             r"\1tmpfiles_process mkinitcpio.conf",
             text,
         )
-        text = text.replace(
-        "        insinto /etc/mkinitcpio.d\n"
-        "        doins \"${FILESDIR}\"/linux.preset\n",
-        "        insinto /etc/mkinitcpio.d\n"
-        "        doins \"${FILESDIR}\"/linux.preset\n"
-        "\t\tinsinto /usr/lib/kernel/postinst.d\n"
-        "\t\tdoexe \"${FILESDIR}\"/50-mkinitcpio-preset.install\n",
-        )
-        text = text.replace(
-        "\tpkg_postinst() {\n"
-        "\t\ttmpfiles_process mkinitcpio.conf\n"
-        "}\n",
-        "\tpkg_postinst() {\n"
-        "\t\ttmpfiles_process mkinitcpio.conf\n"
-        "\t\t\"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install\" --all\n"
-        "}\n",
-        )
+        if 'doexe "${FILESDIR}"/50-mkinitcpio-preset.install' not in text:
+            text = re.sub(
+                r"(?m)^(\s*)insinto /etc/mkinitcpio\.d\n\1doins \"\$\{FILESDIR\}\"/linux\.preset\n",
+                r"\1insinto /etc/mkinitcpio.d\n"
+                r"\1doins \"${FILESDIR}\"/linux.preset\n"
+                r"\1insinto /usr/lib/kernel/postinst.d\n"
+                r"\1doexe \"${FILESDIR}\"/50-mkinitcpio-preset.install\n",
+                text,
+                count=1,
+            )
+
+        if '"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install" --all' not in text:
+            text = re.sub(
+                r"(?m)^([\t ]*tmpfiles_process mkinitcpio\.conf\n)",
+                r"\1\t\t\"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install\" --all\n",
+                text,
+                count=1,
+            )
         ebuild_path.write_text(text, encoding="utf-8")
 
 
