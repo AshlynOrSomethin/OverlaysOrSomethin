@@ -86,5 +86,5 @@ EOF
 }
 
 pkg_postinst() {
-	tmpfiles_process
+	tmpfiles_process 20-mkinitcpio.conf
 }
