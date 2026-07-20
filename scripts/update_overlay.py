@@ -478,6 +478,7 @@ fi
     for ebuild_path in sorted(package_dir.glob("*.ebuild")):
         text = ebuild_path.read_text(encoding="utf-8")
         text = text.replace(r'\"${FILESDIR}\"', '"${FILESDIR}"')
+        text = text.replace("insinto /usr/lib/kernel/postinst.d", "exeinto /usr/lib/kernel/postinst.d")
         text = text.replace(
             r'\"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install\"',
             '"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install"',
@@ -492,7 +493,7 @@ fi
                 r'(?m)^(\s*)insinto /etc/mkinitcpio\.d\n\1doins "\$\{FILESDIR\}"/linux\.preset\n',
                 r'\1insinto /etc/mkinitcpio.d\n'
                 r'\1doins "${FILESDIR}"/linux.preset\n'
-                r'\1insinto /usr/lib/kernel/postinst.d\n'
+                r'\1exeinto /usr/lib/kernel/postinst.d\n'
                 r'\1doexe "${FILESDIR}"/50-mkinitcpio-preset.install\n',
                 text,
                 count=1,

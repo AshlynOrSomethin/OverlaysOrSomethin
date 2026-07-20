@@ -54,11 +54,11 @@ src_install(){
 	newins "${FILESDIR}"/initcpio-hook-udev udev
 	insinto /etc/mkinitcpio.d
 	doins "${FILESDIR}"/linux.preset
-	insinto /usr/lib/kernel/postinst.d
+	exeinto /usr/lib/kernel/postinst.d
 	doexe "${FILESDIR}"/50-mkinitcpio-preset.install
 }
 
 pkg_postinst() {
 	tmpfiles_process mkinitcpio.conf
-		"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install" --all
+	"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install" --all
 }
