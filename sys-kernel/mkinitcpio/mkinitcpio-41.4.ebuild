@@ -47,6 +47,25 @@ QA_PREBUILT="/usr/lib/initcpio/busybox"
 
 src_prepare() {
 	default
+
+	# Gentoo compatibility: some systems do not ship hwdb.bin in Arch paths.
+	sed -i \
+		'/# add hwdb binaries to the initramfs/,/\/etc\/udev\/hwdb.bin/c\
+    # add hwdb binaries to the initramfs when available\
+    for f in /usr/lib/udev/hwdb.bin /etc/udev/hwdb.bin; do\
+        [[ -f "$f" ]] && add_file "$f"\
+    done' \
+		install/systemd install/udev || die
+
+	# Gentoo kernels may not provide both compression helper modules.
+	sed -i \
+		"s#map add_module 'crypto-lzo' 'crypto-lz4'#for mod in crypto-lzo crypto-lz4; do\\n        modinfo -k \"\$KERNELVERSION\" \"\$mod\" >/dev/null 2>\&1 \&\& add_module \"\$mod\"\\n    done#" \
+		install/systemd || die
+
+	# Keymap directory may be absent on minimal installs.
+	sed -i \
+		's#LC_ALL=C.UTF-8 find /usr/share/kbd/keymaps/#[[ -d /usr/share/kbd/keymaps ]] \&\& LC_ALL=C.UTF-8 find /usr/share/kbd/keymaps/#' \
+		install/sd-vconsole || die
 }
 
 src_configure() {
