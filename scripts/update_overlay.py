@@ -20,6 +20,8 @@ from typing import Callable, Optional
 GITHUB_API = "https://api.github.com/repos/{repo}/releases/latest"
 FLATHUB_APPSTREAM_API = "https://flathub.org/api/v2/appstream/{app_id}"
 GENTOO_CONTENTS_API = "https://api.github.com/repos/gentoo/gentoo/contents/{path}"
+ARCHLINUX_PACKAGING_PKGBUILD = "https://gitlab.archlinux.org/archlinux/packaging/packages/{package}/-/raw/main/PKGBUILD"
+ARCHLINUX_SOURCE_ARCHIVE = "https://sources.archlinux.org/other/{package}/{package}-{pkgver}.tar.xz"
 GENTOO_FIREFOX_PATH = "www-client/firefox"
 NBDY_OVERLAY_REPO = "https://codeberg.org/NoBodyZ/nbdy_overlay.git"
 NBDY_WINE_PATH = "app-emulation/wine-cachyos"
@@ -213,6 +215,15 @@ CONFIGS: tuple[PackageConfig, ...] = (
         asset_pattern=r"^spotatui_(?P<version>[0-9.]+)-1_amd64\.deb$",
         distfile_name=lambda v: f"spotatui-{v}_amd64.deb",
     ),
+    PackageConfig(
+        package_name="mkinitcpio",
+        category="sys-kernel",
+        directory="sys-kernel/mkinitcpio",
+        repo="",
+        source="archlinux",
+        asset_pattern=r"",
+        distfile_name=lambda v: f"mkinitcpio-{v.split('.', 1)[0]}.tar.xz",
+    ),
 )
 
 
@@ -260,6 +271,23 @@ def http_get_bytes(url: str, timeout: int = 60) -> bytes:
 
 def http_get_text(url: str, timeout: int = 60) -> str:
     return http_get_bytes(url, timeout=timeout).decode("utf-8")
+
+
+def parse_pkgbuild_scalar(pkgbuild_text: str, var_name: str) -> str:
+    prefix = f"{var_name}="
+    for line in pkgbuild_text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if not line.startswith(prefix):
+            continue
+
+        value = line[len(prefix) :].strip()
+        if value.startswith(("\"", "'")) and value.endswith(("\"", "'")) and len(value) >= 2:
+            value = value[1:-1]
+        return value
+
+    raise RuntimeError(f"Unable to parse '{var_name}' from PKGBUILD")
 
 
 def gentoo_contents(path: str) -> list[dict]:
@@ -648,6 +676,18 @@ def update_package(root: Path, cfg: PackageConfig, dry_run: bool) -> bool:
             raise RuntimeError(f"Missing source mapping for {cfg.package_name}")
         source_name = cfg.source_asset_name(new_ver)
         source_url = cfg.source_download_url(new_ver)
+    elif cfg.source == "archlinux":
+        pkgbuild_url = ARCHLINUX_PACKAGING_PKGBUILD.format(package=cfg.package_name)
+        pkgbuild_text = http_get_text(pkgbuild_url)
+        pkgver = parse_pkgbuild_scalar(pkgbuild_text, "pkgver")
+        pkgrel = parse_pkgbuild_scalar(pkgbuild_text, "pkgrel")
+
+        new_ver = f"{pkgver}.{pkgrel}"
+        source_name = f"{cfg.package_name}-{pkgver}.tar.xz"
+        source_url = ARCHLINUX_SOURCE_ARCHIVE.format(
+            package=cfg.package_name,
+            pkgver=pkgver,
+        )
     else:
         raise RuntimeError(f"Unsupported source '{cfg.source}' for {cfg.package_name}")
 
