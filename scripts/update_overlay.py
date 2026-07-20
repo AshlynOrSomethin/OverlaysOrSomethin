@@ -443,32 +443,32 @@ set -eu
 PRESET_DIR=/etc/mkinitcpio.d
 
 write_preset() {
-    local kernel_version=\"$1\" kernel_image=\"$2\" preset_file
-    preset_file=\"${PRESET_DIR}/kernel-${kernel_version}.preset\"
-    mkdir -p \"${PRESET_DIR}\"
-    cat >\"${preset_file}\" <<EOF
-ALL_config=\"/etc/mkinitcpio.conf\"
-ALL_kver=\"${kernel_image}\"
+    local kernel_version="$1" kernel_image="$2" preset_file
+    preset_file="${PRESET_DIR}/kernel-${kernel_version}.preset"
+    mkdir -p "${PRESET_DIR}"
+    cat >"${preset_file}" <<EOF
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="${kernel_image}"
 
 PRESETS=('default' 'fallback')
 
-default_image=\"/boot/initramfs-${kernel_version}.img\"
-fallback_image=\"/boot/initramfs-${kernel_version}-fallback.img\"
-fallback_options=\"-S autodetect\"
+default_image="/boot/initramfs-${kernel_version}.img"
+fallback_image="/boot/initramfs-${kernel_version}-fallback.img"
+fallback_options="-S autodetect"
 EOF
 }
 
-if [ \"${1:-}\" = \"--all\" ] || [ $# -eq 0 ]; then
+if [ "${1:-}" = "--all" ] || [ $# -eq 0 ]; then
     for kernel in /boot/kernel-*; do
-        [ -f \"${kernel}\" ] || continue
+        [ -f "${kernel}" ] || continue
         kernel_name=${kernel##*/}
         kernel_version=${kernel_name#kernel-}
-        write_preset \"${kernel_version}\" \"${kernel}\"
+        write_preset "${kernel_version}" "${kernel}"
     done
 else
     kernel_version=$1
     kernel_image=${2:-/boot/kernel-${kernel_version}}
-    write_preset \"${kernel_version}\" \"${kernel_image}\"
+    write_preset "${kernel_version}" "${kernel_image}"
 fi
 """
 
@@ -477,6 +477,11 @@ fi
 
     for ebuild_path in sorted(package_dir.glob("*.ebuild")):
         text = ebuild_path.read_text(encoding="utf-8")
+        text = text.replace(r'\"${FILESDIR}\"', '"${FILESDIR}"')
+        text = text.replace(
+            r'\"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install\"',
+            '"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install"',
+        )
         text = re.sub(
             r"(?m)^([\t ]*)tmpfiles_process\s*$",
             r"\1tmpfiles_process mkinitcpio.conf",
@@ -484,11 +489,11 @@ fi
         )
         if 'doexe "${FILESDIR}"/50-mkinitcpio-preset.install' not in text:
             text = re.sub(
-                r"(?m)^(\s*)insinto /etc/mkinitcpio\.d\n\1doins \"\$\{FILESDIR\}\"/linux\.preset\n",
-                r"\1insinto /etc/mkinitcpio.d\n"
-                r"\1doins \"${FILESDIR}\"/linux.preset\n"
-                r"\1insinto /usr/lib/kernel/postinst.d\n"
-                r"\1doexe \"${FILESDIR}\"/50-mkinitcpio-preset.install\n",
+                r'(?m)^(\s*)insinto /etc/mkinitcpio\.d\n\1doins "\$\{FILESDIR\}"/linux\.preset\n',
+                r'\1insinto /etc/mkinitcpio.d\n'
+                r'\1doins "${FILESDIR}"/linux.preset\n'
+                r'\1insinto /usr/lib/kernel/postinst.d\n'
+                r'\1doexe "${FILESDIR}"/50-mkinitcpio-preset.install\n',
                 text,
                 count=1,
             )
@@ -496,7 +501,8 @@ fi
         if '"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install" --all' not in text:
             text = re.sub(
                 r"(?m)^([\t ]*tmpfiles_process mkinitcpio\.conf\n)",
-                r"\1\t\t\"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install\" --all\n",
+                lambda m: m.group(1)
+                + '\t\t"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install" --all\n',
                 text,
                 count=1,
             )
