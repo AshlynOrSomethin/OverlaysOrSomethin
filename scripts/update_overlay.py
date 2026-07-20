@@ -422,6 +422,17 @@ def rewrite_package_manifest(package_dir: Path) -> None:
     manifest_path.write_text("".join(lines), encoding="utf-8")
 
 
+def patch_mkinitcpio_ebuilds(package_dir: Path) -> None:
+    for ebuild_path in sorted(package_dir.glob("*.ebuild")):
+        text = ebuild_path.read_text(encoding="utf-8")
+        text = re.sub(
+            r"(?m)^([\t ]*)tmpfiles_process\s*$",
+            r"\1tmpfiles_process mkinitcpio.conf",
+            text,
+        )
+        ebuild_path.write_text(text, encoding="utf-8")
+
+
 def directories_equal(left: Path, right: Path) -> bool:
     left_files = {
         p.relative_to(left).as_posix(): p
@@ -660,6 +671,10 @@ def update_package(root: Path, cfg: PackageConfig, dry_run: bool) -> bool:
         with tempfile.TemporaryDirectory() as td:
             staged_dir = Path(td) / cfg.package_name
             sync_github_directory(cfg.repo, cfg.source_tree_path, staged_dir)
+
+            if cfg.package_name == "mkinitcpio":
+                patch_mkinitcpio_ebuilds(staged_dir)
+                rewrite_package_manifest(staged_dir)
 
             if package_dir.exists() and directories_equal(package_dir, staged_dir):
                 print(f"[{cfg.package_name}] tree already mirrored")
