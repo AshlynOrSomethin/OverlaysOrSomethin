@@ -19,7 +19,7 @@ from typing import Callable, Optional
 
 GITHUB_API = "https://api.github.com/repos/{repo}/releases/latest"
 FLATHUB_APPSTREAM_API = "https://flathub.org/api/v2/appstream/{app_id}"
-GENTOO_CONTENTS_API = "https://api.github.com/repos/gentoo/gentoo/contents/{path}"
+GITHUB_CONTENTS_API = "https://api.github.com/repos/{repo}/contents/{path}"
 ARCHLINUX_PACKAGING_PKGBUILD = "https://gitlab.archlinux.org/archlinux/packaging/packages/{package}/-/raw/main/PKGBUILD"
 ARCHLINUX_SOURCE_ARCHIVE = "https://sources.archlinux.org/other/{package}/{package}-{pkgver}.tar.xz"
 GENTOO_FIREFOX_PATH = "www-client/firefox"
@@ -97,6 +97,7 @@ class PackageConfig:
     version_from_tag: bool = False
     tag_strip_prefix: str = "v"
     source: str = "github"
+    source_tree_path: Optional[str] = None
     flathub_app_id: Optional[str] = None
     source_asset_name: Optional[Callable[[str], str]] = None
     source_download_url: Optional[Callable[[str], str]] = None
@@ -219,10 +220,11 @@ CONFIGS: tuple[PackageConfig, ...] = (
         package_name="mkinitcpio",
         category="sys-kernel",
         directory="sys-kernel/mkinitcpio",
-        repo="",
-        source="archlinux",
+        repo="gentoo-zh/overlay",
+        source="github_tree",
+        source_tree_path="sys-kernel/mkinitcpio",
         asset_pattern=r"",
-        distfile_name=lambda v: f"mkinitcpio-{v.split('.', 1)[0]}.tar.xz",
+        distfile_name=lambda v: f"mkinitcpio-{v}.tar.gz",
     ),
 )
 
@@ -290,16 +292,16 @@ def parse_pkgbuild_scalar(pkgbuild_text: str, var_name: str) -> str:
     raise RuntimeError(f"Unable to parse '{var_name}' from PKGBUILD")
 
 
-def gentoo_contents(path: str) -> list[dict]:
-    data = github_request(GENTOO_CONTENTS_API.format(path=path))
+def github_contents(repo: str, path: str) -> list[dict]:
+    data = github_request(GITHUB_CONTENTS_API.format(repo=repo, path=path))
     if not isinstance(data, list):
-        raise RuntimeError(f"Unexpected GitHub contents response for {path}")
+        raise RuntimeError(f"Unexpected GitHub contents response for {repo}/{path}")
     return data
 
 
-def sync_gentoo_directory(src_path: str, dest_dir: Path) -> None:
+def sync_github_directory(repo: str, src_path: str, dest_dir: Path) -> None:
     dest_dir.mkdir(parents=True, exist_ok=True)
-    for entry in gentoo_contents(src_path):
+    for entry in github_contents(repo, src_path):
         entry_type = entry.get("type")
         name = entry.get("name")
         if not isinstance(name, str):
@@ -310,7 +312,7 @@ def sync_gentoo_directory(src_path: str, dest_dir: Path) -> None:
                 raise RuntimeError(f"Missing download_url for {src_path}/{name}")
             (dest_dir / name).write_bytes(http_get_bytes(download_url, timeout=300))
         elif entry_type == "dir":
-            sync_gentoo_directory(f"{src_path}/{name}", dest_dir / name)
+            sync_github_directory(repo, f"{src_path}/{name}", dest_dir / name)
 
 
 def detect_firefox_slot(ebuild_text: str) -> str:
@@ -493,7 +495,7 @@ def update_firefox_source_mirror(root: Path, dry_run: bool) -> bool:
         tmp_package = Path(td) / "firefox"
         tmp_package.mkdir(parents=True, exist_ok=True)
 
-        root_entries = gentoo_contents(GENTOO_FIREFOX_PATH)
+        root_entries = github_contents("gentoo/gentoo", GENTOO_FIREFOX_PATH)
 
         ebuild_entries: list[dict] = []
         for entry in root_entries:
@@ -508,7 +510,7 @@ def update_firefox_source_mirror(root: Path, dry_run: bool) -> bool:
                     raise RuntimeError(f"Missing download_url for {GENTOO_FIREFOX_PATH}/{name}")
                 (tmp_package / name).write_bytes(http_get_bytes(download_url, timeout=300))
             elif entry.get("type") == "dir" and name == "files":
-                sync_gentoo_directory(f"{GENTOO_FIREFOX_PATH}/files", tmp_package / "files")
+                sync_github_directory("gentoo/gentoo", f"{GENTOO_FIREFOX_PATH}/files", tmp_package / "files")
 
         if not ebuild_entries:
             raise RuntimeError("No firefox ebuilds found in Gentoo tree")
@@ -650,6 +652,30 @@ def version_from_release(cfg: PackageConfig, release: dict, asset: dict) -> str:
 
 def update_package(root: Path, cfg: PackageConfig, dry_run: bool) -> bool:
     package_dir = root / cfg.directory
+
+    if cfg.source == "github_tree":
+        if not cfg.source_tree_path:
+            raise RuntimeError(f"Missing source_tree_path for {cfg.package_name}")
+
+        with tempfile.TemporaryDirectory() as td:
+            staged_dir = Path(td) / cfg.package_name
+            sync_github_directory(cfg.repo, cfg.source_tree_path, staged_dir)
+
+            if package_dir.exists() and directories_equal(package_dir, staged_dir):
+                print(f"[{cfg.package_name}] tree already mirrored")
+                return False
+
+            if dry_run:
+                print(f"[{cfg.package_name}] would mirror {cfg.repo}/{cfg.source_tree_path}")
+                return True
+
+            if package_dir.exists():
+                shutil.rmtree(package_dir)
+            shutil.copytree(staged_dir, package_dir)
+
+            print(f"[{cfg.package_name}] mirrored {cfg.repo}/{cfg.source_tree_path}")
+            return True
+
     cur_ver, cur_ebuild = current_version(package_dir, cfg.package_name)
 
     if cfg.source == "github":
