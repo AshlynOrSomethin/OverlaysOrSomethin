@@ -423,12 +423,68 @@ def rewrite_package_manifest(package_dir: Path) -> None:
 
 
 def patch_mkinitcpio_ebuilds(package_dir: Path) -> None:
+    preset_hook_content = """#!/usr/bin/env bash
+
+set -eu
+
+PRESET_DIR=/etc/mkinitcpio.d
+
+write_preset() {
+    local kernel_version=\"$1\" kernel_image=\"$2\" preset_file
+    preset_file=\"${PRESET_DIR}/kernel-${kernel_version}.preset\"
+    mkdir -p \"${PRESET_DIR}\"
+    cat >\"${preset_file}\" <<EOF
+ALL_config=\"/etc/mkinitcpio.conf\"
+ALL_kver=\"${kernel_image}\"
+
+PRESETS=('default' 'fallback')
+
+default_image=\"/boot/initramfs-${kernel_version}.img\"
+fallback_image=\"/boot/initramfs-${kernel_version}-fallback.img\"
+fallback_options=\"-S autodetect\"
+EOF
+}
+
+if [ \"${1:-}\" = \"--all\" ] || [ $# -eq 0 ]; then
+    for kernel in /boot/kernel-*; do
+        [ -f \"${kernel}\" ] || continue
+        kernel_name=${kernel##*/}
+        kernel_version=${kernel_name#kernel-}
+        write_preset \"${kernel_version}\" \"${kernel}\"
+    done
+else
+    kernel_version=$1
+    kernel_image=${2:-/boot/kernel-${kernel_version}}
+    write_preset \"${kernel_version}\" \"${kernel_image}\"
+fi
+"""
+
+    hook_path = package_dir / "files" / "50-mkinitcpio-preset.install"
+    hook_path.write_text(preset_hook_content, encoding="utf-8")
+
     for ebuild_path in sorted(package_dir.glob("*.ebuild")):
         text = ebuild_path.read_text(encoding="utf-8")
         text = re.sub(
             r"(?m)^([\t ]*)tmpfiles_process\s*$",
             r"\1tmpfiles_process mkinitcpio.conf",
             text,
+        )
+        text = text.replace(
+        "        insinto /etc/mkinitcpio.d\n"
+        "        doins \"${FILESDIR}\"/linux.preset\n",
+        "        insinto /etc/mkinitcpio.d\n"
+        "        doins \"${FILESDIR}\"/linux.preset\n"
+        "\t\tinsinto /usr/lib/kernel/postinst.d\n"
+        "\t\tdoexe \"${FILESDIR}\"/50-mkinitcpio-preset.install\n",
+        )
+        text = text.replace(
+        "\tpkg_postinst() {\n"
+        "\t\ttmpfiles_process mkinitcpio.conf\n"
+        "}\n",
+        "\tpkg_postinst() {\n"
+        "\t\ttmpfiles_process mkinitcpio.conf\n"
+        "\t\t\"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install\" --all\n"
+        "}\n",
         )
         ebuild_path.write_text(text, encoding="utf-8")
 

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+set -eu
+
+PRESET_DIR=/etc/mkinitcpio.d
+
+write_preset() {
+	local kernel_version="$1" kernel_image="$2" preset_file
+	preset_file="${PRESET_DIR}/kernel-${kernel_version}.preset"
+	mkdir -p "${PRESET_DIR}"
+	cat >"${preset_file}" <<EOF
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="${kernel_image}"
+
+PRESETS=('default' 'fallback')
+
+default_image="/boot/initramfs-${kernel_version}.img"
+fallback_image="/boot/initramfs-${kernel_version}-fallback.img"
+fallback_options="-S autodetect"
+EOF
+}
+
+if [ "${1:-}" = "--all" ] || [ $# -eq 0 ]; then
+	for kernel in /boot/kernel-*; do
+		[ -f "${kernel}" ] || continue
+		kernel_name=${kernel##*/}
+		kernel_version=${kernel_name#kernel-}
+		write_preset "${kernel_version}" "${kernel}"
+	done
+else
+	kernel_version=$1
+	kernel_image=${2:-/boot/kernel-${kernel_version}}
+	write_preset "${kernel_version}" "${kernel_image}"
+fi
