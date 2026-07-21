@@ -60,5 +60,5 @@ src_install(){
 
 pkg_postinst() {
 	tmpfiles_process mkinitcpio.conf
-	"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install" --all
+		"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install" --all
 }
