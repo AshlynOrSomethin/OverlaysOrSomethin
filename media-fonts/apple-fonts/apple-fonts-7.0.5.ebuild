@@ -16,7 +16,7 @@ SLOT="0"
 KEYWORDS="amd64"
 RESTRICT="bindist mirror"
 
-BDEPEND="app-arch/p7zip"
+BDEPEND="app-arch/7zip"
 
 S="${WORKDIR}"
 FONT_S="${WORKDIR}/fonts"
