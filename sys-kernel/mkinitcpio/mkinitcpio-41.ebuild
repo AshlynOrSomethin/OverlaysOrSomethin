@@ -3,7 +3,7 @@
 
 EAPI=8
 
-inherit tmpfiles
+inherit meson tmpfiles
 
 DESCRIPTION="Modular initramfs image creation utility"
 HOMEPAGE="https://github.com/archlinux/mkinitcpio"
@@ -35,6 +35,7 @@ RDEPEND="${DEPEND}
 "
 
 BDEPEND="
+	dev-build/meson
 	sys-apps/busybox
 	app-arch/libarchive
 	app-text/asciidoc
@@ -43,8 +44,18 @@ BDEPEND="
 
 QA_PREBUILT="/usr/lib/initcpio/busybox"
 
+src_configure() {
+	meson_src_configure
+}
+
+src_compile() {
+	meson_src_compile
+}
+
 src_install(){
-	default_src_install
+	meson_src_install
+	insinto /etc
+	doins mkinitcpio.conf
 	exeinto /usr/lib/initcpio/
 	doexe /bin/busybox
 	insinto /usr/lib/initcpio/install
@@ -60,5 +71,5 @@ src_install(){
 
 pkg_postinst() {
 	tmpfiles_process mkinitcpio.conf
-		"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install" --all
+	"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install" --all
 }
