@@ -114,6 +114,7 @@ UNMANAGED_PACKAGES: dict[str, str] = {
     "net-misc/mqtt-explorer-bin": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
     "net-print/brother-hll2305w": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
     "media-fonts/nerd-fonts": "Very large multi-dist Manifest and ebuild-specific versioning logic require dedicated updater flow.",
+    "sys-kernel/mkinitcpio": "Temporarily managed manually; updater automation disabled for now.",
 }
 
 
@@ -215,16 +216,6 @@ CONFIGS: tuple[PackageConfig, ...] = (
         repo="LargeModGames/spotatui",
         asset_pattern=r"^spotatui_(?P<version>[0-9.]+)-1_amd64\.deb$",
         distfile_name=lambda v: f"spotatui-{v}_amd64.deb",
-    ),
-    PackageConfig(
-        package_name="mkinitcpio",
-        category="sys-kernel",
-        directory="sys-kernel/mkinitcpio",
-        repo="gentoo-zh/overlay",
-        source="github_tree",
-        source_tree_path="sys-kernel/mkinitcpio",
-        asset_pattern=r"",
-        distfile_name=lambda v: f"mkinitcpio-{v}.tar.gz",
     ),
 )
 
