@@ -22,6 +22,7 @@ FLATHUB_APPSTREAM_API = "https://flathub.org/api/v2/appstream/{app_id}"
 GITHUB_CONTENTS_API = "https://api.github.com/repos/{repo}/contents/{path}"
 ARCHLINUX_PACKAGING_PKGBUILD = "https://gitlab.archlinux.org/archlinux/packaging/packages/{package}/-/raw/main/PKGBUILD"
 ARCHLINUX_SOURCE_ARCHIVE = "https://sources.archlinux.org/other/{package}/{package}-{pkgver}.tar.xz"
+AUR_PKGBUILD = "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h={package}"
 GENTOO_FIREFOX_PATH = "www-client/firefox"
 NBDY_OVERLAY_REPO = "https://codeberg.org/NoBodyZ/nbdy_overlay.git"
 NBDY_WINE_PATH = "app-emulation/wine-cachyos"
@@ -99,6 +100,7 @@ class PackageConfig:
     source: str = "github"
     source_tree_path: Optional[str] = None
     flathub_app_id: Optional[str] = None
+    source_package: Optional[str] = None
     source_asset_name: Optional[Callable[[str], str]] = None
     source_download_url: Optional[Callable[[str], str]] = None
 
@@ -194,8 +196,8 @@ CONFIGS: tuple[PackageConfig, ...] = (
         category="games-action",
         directory="games-action/lunarclient",
         repo="",
-        source="flathub",
-        flathub_app_id="com.lunarclient.LunarClient",
+        source="aur",
+        source_package="lunar-client",
         source_asset_name=lambda v: f"Lunar%20Client-{v}-ow.AppImage",
         source_download_url=lambda v: f"https://launcherupdates.lunarclientcdn.com/Lunar%20Client-{v}-ow.AppImage",
         asset_pattern=r"",
@@ -781,6 +783,15 @@ def update_package(root: Path, cfg: PackageConfig, dry_run: bool) -> bool:
         new_ver = newest.get("version", "")
         if not new_ver:
             raise RuntimeError(f"Unable to parse Flathub version for {cfg.package_name}")
+        if cfg.source_asset_name is None or cfg.source_download_url is None:
+            raise RuntimeError(f"Missing source mapping for {cfg.package_name}")
+        source_name = cfg.source_asset_name(new_ver)
+        source_url = cfg.source_download_url(new_ver)
+    elif cfg.source == "aur":
+        aur_package = cfg.source_package or cfg.package_name
+        pkgbuild_url = AUR_PKGBUILD.format(package=aur_package)
+        pkgbuild_text = http_get_text(pkgbuild_url)
+        new_ver = parse_pkgbuild_scalar(pkgbuild_text, "pkgver")
         if cfg.source_asset_name is None or cfg.source_download_url is None:
             raise RuntimeError(f"Missing source mapping for {cfg.package_name}")
         source_name = cfg.source_asset_name(new_ver)

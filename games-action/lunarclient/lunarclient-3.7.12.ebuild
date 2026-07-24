@@ -1,26 +1,25 @@
 EAPI=8
-inherit desktop xdg-utils
+inherit xdg-utils
 
-DESCRIPTION="PvP modpack for modern Minecraft (Lunar Client AppImage, binary)"
+DESCRIPTION="PvP Modpack for Minecraft (Lunar Client AppImage, binary)"
 HOMEPAGE="https://lunarclient.com"
 LICENSE="all-rights-reserved"
 SLOT="0"
 KEYWORDS="amd64"
-RESTRICT="strip mirror"
+RESTRICT="mirror strip"
 
-# Upstream filename pattern includes '-ow'
-APPIMAGE_REMOTE="Lunar%20Client-${PV}-ow.AppImage"
-# Rename locally for a stable distfile name
-APPIMAGE_LOCAL="${PN}-${PV}.AppImage"
+_pkgname="lunarclient"
+_appimage_remote="Lunar%20Client-${PV}-ow.AppImage"
+_appimage_local="${PN}-${PV}.AppImage"
 
 SRC_URI="
-  amd64? ( https://launcherupdates.lunarclientcdn.com/${APPIMAGE_REMOTE} -> ${APPIMAGE_LOCAL} )
+  amd64? ( https://launcherupdates.lunarclientcdn.com/${_appimage_remote} -> ${_appimage_local} )
 "
 
 S="${WORKDIR}"
 QA_PREBUILT="*"
 
-# Runtime deps similar to Arch's depends
+# AppImage bundles most shared libs; keep minimal host runtime requirements.
 RDEPEND="
   sys-fs/fuse:0
   x11-apps/xrandr
@@ -33,47 +32,44 @@ src_unpack() {
 src_prepare() {
   default
 
-  # Stage and extract AppImage
-  cp "${DISTDIR}/${APPIMAGE_LOCAL}" "${S}/${APPIMAGE_LOCAL}" || die
-  chmod +x "${APPIMAGE_LOCAL}" || die
-  "./${APPIMAGE_LOCAL}" --appimage-extract || die
+  cp "${DISTDIR}/${_appimage_local}" "${S}/${_appimage_local}" || die
+  chmod +x "${_appimage_local}" || die
+  "./${_appimage_local}" --appimage-extract || die
+}
 
-  # Ensure desktop entry launches system wrapper (not AppRun)
-  if [[ -f squashfs-root/lunarclient.desktop ]]; then
-    # We'll make the user-facing command 'lunarclient'
+src_compile() {
+  if [[ -f "squashfs-root/${_pkgname}.desktop" ]]; then
+    # Match AUR behavior: run unpacked desktop file outside AppImage container.
     sed -i -E \
-      "s|^Exec=.*|Exec=env DESKTOPINTEGRATION=false /usr/bin/lunarclient|" \
-      squashfs-root/lunarclient.desktop || die
+      "s|Exec=AppRun|Exec=env DESKTOPINTEGRATION=false /usr/bin/${_pkgname}|" \
+      "squashfs-root/${_pkgname}.desktop" || die
   else
-    die "lunarclient.desktop not found in AppImage (squashfs-root)"
+    die "${_pkgname}.desktop not found in AppImage (squashfs-root)"
   fi
 
-  # AppImage often ships 700 perms; relax for icons/resources
   if [[ -d squashfs-root/usr ]]; then
     chmod -R a-x+rX squashfs-root/usr || die
   fi
 }
 
 src_install() {
-  # Install AppImage under /opt/${PN}
-  exeinto "/opt/${PN}"
-  newexe "${APPIMAGE_LOCAL}" "${PN}.AppImage"
+  # AppImage
+  exeinto "/opt/${_pkgname}"
+  newexe "${_appimage_local}" "${_pkgname}.AppImage"
 
-  # Desktop entry
+  # Desktop file
   insinto /usr/share/applications
-  newins squashfs-root/lunarclient.desktop "lunarclient.desktop"
+  newins "squashfs-root/${_pkgname}.desktop" "${_pkgname}.desktop"
 
-  # Icons from AppImage (hicolor theme)
+  # Icon images
   if [[ -d squashfs-root/usr/share/icons ]]; then
     insinto /usr/share/icons
     doins -r squashfs-root/usr/share/icons/*
   fi
 
-  # Provide convenient launchers:
-  # - user-facing 'lunarclient'
-  # - package-named 'lunar-client-bin'
-  dosym "/opt/${PN}/${PN}.AppImage" "/usr/bin/lunarclient"
-  dosym "/opt/${PN}/${PN}.AppImage" "/usr/bin/${PN}"
+  # Symlink executable
+  dosym "/opt/${_pkgname}/${_pkgname}.AppImage" "/usr/bin/${_pkgname}"
+  dosym "/opt/${_pkgname}/${_pkgname}.AppImage" "/usr/bin/${PN}"
 }
 
 pkg_postinst() {
