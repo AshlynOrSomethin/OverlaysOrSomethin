@@ -66,6 +66,13 @@ src_prepare() {
 		tc-is-gcc && merge_configs+=( "${dist_conf_path}"/hardened-gcc-plugins.config )
 	fi
 
+	# Avoid building resolve_btfids/libbpf on older kernel branches with newer compilers.
+	cat > "${T}"/no-btf.config <<-EOF || die
+		CONFIG_DEBUG_INFO_BTF=n
+		CONFIG_DEBUG_INFO_BTF_MODULES=n
+	EOF
+	merge_configs+=( "${T}"/no-btf.config )
+
 	kernel-build_merge_configs "${merge_configs[@]}"
 }
 
