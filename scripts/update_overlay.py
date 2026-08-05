@@ -116,7 +116,6 @@ UNMANAGED_PACKAGES: dict[str, str] = {
     "net-misc/mqtt-explorer-bin": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
     "net-print/brother-hll2305w": "Not automated yet; upstream packaging/release mapping requires a package-specific updater rule.",
     "media-fonts/nerd-fonts": "Very large multi-dist Manifest and ebuild-specific versioning logic require dedicated updater flow.",
-    "sys-kernel/mkinitcpio": "Temporarily managed manually; updater automation disabled for now.",
 }
 
 
@@ -428,81 +427,6 @@ def rewrite_package_manifest(package_dir: Path) -> None:
     manifest_path.write_text("".join(lines), encoding="utf-8")
 
 
-def patch_mkinitcpio_ebuilds(package_dir: Path) -> None:
-    preset_hook_content = """#!/usr/bin/env bash
-
-set -eu
-
-PRESET_DIR=/etc/mkinitcpio.d
-
-write_preset() {
-    local kernel_version="$1" kernel_image="$2" preset_file
-    preset_file="${PRESET_DIR}/kernel-${kernel_version}.preset"
-    mkdir -p "${PRESET_DIR}"
-    cat >"${preset_file}" <<EOF
-ALL_config="/etc/mkinitcpio.conf"
-ALL_kver="${kernel_image}"
-
-PRESETS=('default' 'fallback')
-
-default_image="/boot/initramfs-${kernel_version}.img"
-fallback_image="/boot/initramfs-${kernel_version}-fallback.img"
-fallback_options="-S autodetect"
-EOF
-}
-
-if [ "${1:-}" = "--all" ] || [ $# -eq 0 ]; then
-    for kernel in /boot/kernel-*; do
-        [ -f "${kernel}" ] || continue
-        kernel_name=${kernel##*/}
-        kernel_version=${kernel_name#kernel-}
-        write_preset "${kernel_version}" "${kernel}"
-    done
-else
-    kernel_version=$1
-    kernel_image=${2:-/boot/kernel-${kernel_version}}
-    write_preset "${kernel_version}" "${kernel_image}"
-fi
-"""
-
-    hook_path = package_dir / "files" / "50-mkinitcpio-preset.install"
-    hook_path.write_text(preset_hook_content, encoding="utf-8")
-
-    for ebuild_path in sorted(package_dir.glob("*.ebuild")):
-        text = ebuild_path.read_text(encoding="utf-8")
-        text = text.replace(r'\"${FILESDIR}\"', '"${FILESDIR}"')
-        text = text.replace("insinto /usr/lib/kernel/postinst.d", "exeinto /usr/lib/kernel/postinst.d")
-        text = text.replace(
-            r'\"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install\"',
-            '"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install"',
-        )
-        text = re.sub(
-            r"(?m)^([\t ]*)tmpfiles_process\s*$",
-            r"\1tmpfiles_process mkinitcpio.conf",
-            text,
-        )
-        if 'doexe "${FILESDIR}"/50-mkinitcpio-preset.install' not in text:
-            text = re.sub(
-                r'(?m)^(\s*)insinto /etc/mkinitcpio\.d\n\1doins "\$\{FILESDIR\}"/linux\.preset\n',
-                r'\1insinto /etc/mkinitcpio.d\n'
-                r'\1doins "${FILESDIR}"/linux.preset\n'
-                r'\1exeinto /usr/lib/kernel/postinst.d\n'
-                r'\1doexe "${FILESDIR}"/50-mkinitcpio-preset.install\n',
-                text,
-                count=1,
-            )
-
-        if '"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install" --all' not in text:
-            text = re.sub(
-                r"(?m)^([\t ]*tmpfiles_process mkinitcpio\.conf\n)",
-                lambda m: m.group(1)
-                + '\t\t"/usr/lib/kernel/postinst.d/50-mkinitcpio-preset.install" --all\n',
-                text,
-                count=1,
-            )
-        ebuild_path.write_text(text, encoding="utf-8")
-
-
 def directories_equal(left: Path, right: Path) -> bool:
     left_files = {
         p.relative_to(left).as_posix(): p
@@ -741,10 +665,6 @@ def update_package(root: Path, cfg: PackageConfig, dry_run: bool) -> bool:
         with tempfile.TemporaryDirectory() as td:
             staged_dir = Path(td) / cfg.package_name
             sync_github_directory(cfg.repo, cfg.source_tree_path, staged_dir)
-
-            if cfg.package_name == "mkinitcpio":
-                patch_mkinitcpio_ebuilds(staged_dir)
-                rewrite_package_manifest(staged_dir)
 
             if package_dir.exists() and directories_equal(package_dir, staged_dir):
                 print(f"[{cfg.package_name}] tree already mirrored")
