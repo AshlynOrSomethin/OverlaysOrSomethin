@@ -68,3 +68,10 @@ src_prepare() {
 
 	kernel-build_merge_configs "${merge_configs[@]}"
 }
+
+src_configure() {
+	# Older stable kernels can fail host-tool builds on newer compilers due to -Werror.
+	export HOSTCFLAGS="${HOSTCFLAGS} -Wno-error"
+	export HOSTCXXFLAGS="${HOSTCXXFLAGS} -Wno-error"
+	kernel-build_src_configure
+}
