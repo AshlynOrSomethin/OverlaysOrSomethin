@@ -3,7 +3,7 @@
 
 EAPI=8
 
-FIREFOX_PATCHSET="firefox-155-patches-04.tar.xz"
+FIREFOX_PATCHSET="firefox-155-patches-05.tar.xz"
 
 LLVM_COMPAT=( 22 )
 
@@ -515,6 +515,13 @@ src_prepare() {
 	eapply "${WORKDIR}/firefox-patches"
 
 	# Allow user to apply any additional patches without modifing ebuild
+	if [[ ! -f "/etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch" ]]; then
+		if ! nonfatal eapply "${FILESDIR}/firefox-audio-software-volume.patch"; then
+			ewarn "Bundled software-volume patch no longer applies cleanly."
+			ewarn "Place an updated patch at /etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch to override."
+		fi
+	fi
+
 	eapply_user
 
 	# Make cargo respect MAKEOPTS
