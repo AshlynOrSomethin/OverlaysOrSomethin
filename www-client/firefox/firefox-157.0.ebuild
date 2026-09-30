@@ -3,7 +3,7 @@
 
 EAPI=8
 
-FIREFOX_PATCHSET="firefox-156-patches-02.tar.xz"
+FIREFOX_PATCHSET="firefox-157-patches-01.tar.xz"
 
 LLVM_COMPAT=( 22 )
 
@@ -125,7 +125,7 @@ COMMON_DEPEND="${FF_ONLY_DEPEND}
 	>=app-accessibility/at-spi2-core-2.46.0:2
 	dev-libs/glib:2
 	dev-libs/libffi:=
-	>=dev-libs/nss-3.128
+	>=dev-libs/nss-3.129
 	>=dev-libs/nspr-4.39
 	media-libs/alsa-lib
 	media-libs/fontconfig
@@ -515,6 +515,13 @@ src_prepare() {
 	eapply "${WORKDIR}/firefox-patches"
 
 	# Allow user to apply any additional patches without modifing ebuild
+	if [[ ! -f "/etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch" ]]; then
+		if ! nonfatal eapply "${FILESDIR}/firefox-audio-software-volume.patch"; then
+			ewarn "Bundled software-volume patch no longer applies cleanly."
+			ewarn "Place an updated patch at /etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch to override."
+		fi
+	fi
+
 	eapply_user
 
 	# Make cargo respect MAKEOPTS
@@ -588,6 +595,7 @@ src_prepare() {
 
 	# Clear checksums from cargo crates we've manually patched.
 	# moz_clear_vendor_checksums xyz
+	moz_clear_vendor_checksums bindgen
 
 	# Respect choice for "jumbo-build"
 	# Changing the value for FILES_PER_UNIFIED_FILE may not work, see #905431
@@ -710,7 +718,6 @@ src_configure() {
 		--disable-parental-controls \
 		--disable-strip \
 		--disable-updater \
-		--disable-wmf \
 		--enable-negotiateauth \
 		--enable-new-pass-manager \
 		--enable-official-branding \

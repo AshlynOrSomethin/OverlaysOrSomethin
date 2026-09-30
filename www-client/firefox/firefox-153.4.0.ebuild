@@ -3,7 +3,7 @@
 
 EAPI=8
 
-FIREFOX_PATCHSET="firefox-156-patches-02.tar.xz"
+FIREFOX_PATCHSET="firefox-153esr-patches-04.tar.xz"
 
 LLVM_COMPAT=( 22 )
 
@@ -21,7 +21,7 @@ VIRTUALX_REQUIRED="manual"
 WASI_SDK_VER=34.0
 WASI_SDK_LLVM_VER=23
 
-MOZ_ESR=
+MOZ_ESR=yes
 
 MOZ_PV=${PV}
 MOZ_PV_SUFFIX=
@@ -72,7 +72,7 @@ SRC_URI="${MOZ_SRC_BASE_URI}/source/${MOZ_P}.source.tar.xz -> ${MOZ_P_DISTFILES}
 
 S="${WORKDIR}/${PN}-${PV%_*}"
 LICENSE="MPL-2.0 GPL-2 LGPL-2.1"
-KEYWORDS="~amd64 ~arm64 ~loong ~ppc64 ~riscv ~x86"
+KEYWORDS="amd64 arm64 ~loong ~ppc64 ~riscv ~x86"
 
 IUSE="+clang dbus debug eme-free hardened hwaccel jack libproxy pgo pulseaudio selinux sndio"
 IUSE+=" +system-av1 +system-harfbuzz +system-icu +system-jpeg +system-libevent +system-libvpx"
@@ -125,7 +125,7 @@ COMMON_DEPEND="${FF_ONLY_DEPEND}
 	>=app-accessibility/at-spi2-core-2.46.0:2
 	dev-libs/glib:2
 	dev-libs/libffi:=
-	>=dev-libs/nss-3.128
+	>=dev-libs/nss-3.125
 	>=dev-libs/nspr-4.39
 	media-libs/alsa-lib
 	media-libs/fontconfig
@@ -153,7 +153,7 @@ COMMON_DEPEND="${FF_ONLY_DEPEND}
 	selinux? ( sec-policy/selinux-mozilla )
 	sndio? ( >=media-sound/sndio-1.8.0-r1 )
 	system-av1? (
-		>=media-libs/dav1d-1.5.4:=
+		>=media-libs/dav1d-1.5.3:=
 		>=media-libs/libaom-3.12.1:=
 	)
 	system-harfbuzz? (
@@ -510,11 +510,26 @@ src_prepare() {
 	if use elibc_glibc ; then
 		rm -v "${WORKDIR}"/firefox-patches/*bgo-748849-RUST_TARGET_override.patch || die
 		rm -v "${WORKDIR}"/firefox-patches/*bgo-967694-musl-prctrl-exception-on-musl.patch || die
+	else
+		# in musl, the rust-1.98 patch probably handles RUST_TARGET like we want to?
+		local rustver=$(rustc --version | cut -d' ' -f2)
+		if ver_test "${rustver}" -ge 1.98 ; then
+			rm -v "${WORKDIR}"/firefox-patches/*bgo-748849-RUST_TARGET_override.patch || die
+		else
+			rm -v "${WORKDIR}"/firefox-patches/*-bmo-2053518-handle-oe-linux-rust-targets-added-in-rustc-1.98.patch || die
+		fi
 	fi
 
 	eapply "${WORKDIR}/firefox-patches"
 
 	# Allow user to apply any additional patches without modifing ebuild
+	if [[ ! -f "/etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch" ]]; then
+		if ! nonfatal eapply "${FILESDIR}/firefox-audio-software-volume.patch"; then
+			ewarn "Bundled software-volume patch no longer applies cleanly."
+			ewarn "Place an updated patch at /etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch to override."
+		fi
+	fi
+
 	eapply_user
 
 	# Make cargo respect MAKEOPTS
@@ -757,6 +772,7 @@ src_configure() {
 	# riscv-related options, bgo#947337, bgo#947338, bgo#977845
 	if use riscv ; then
 		mozconfig_add_options_ac 'Disable webrtc for RISC-V' --disable-webrtc
+		mozconfig_add_options_ac 'Disable JIT for RISC-V' --disable-jit
 	fi
 
 	mozconfig_use_enable valgrind
@@ -816,7 +832,6 @@ src_configure() {
 
 	mozconfig_use_enable dbus
 	mozconfig_use_enable libproxy
-	mozconfig_use_enable jumbo-build unified-build
 
 	use eme-free && mozconfig_add_options_ac '+eme-free' --disable-eme
 
@@ -838,6 +853,8 @@ src_configure() {
 	mozconfig_add_options_ac '--enable-audio-backends' --enable-audio-backends="${myaudiobackends::-1}"
 
 	mozconfig_use_enable wifi necko-wifi
+
+	! use jumbo-build && mozconfig_add_options_ac '--disable-unified-build' --disable-unified-build
 
 	if use X && use wayland ; then
 		mozconfig_add_options_ac '+x11+wayland' --enable-default-toolkit=cairo-gtk3-x11-wayland
@@ -1149,9 +1166,16 @@ src_install() {
 			EOF
 		fi
 
-		# Install the gfxtest binary on supported arches
+		# Install the vaapitest binary on supported arches (122.0 supports all platforms, bmo#1865969)
 		exeinto "${MOZILLA_FIVE_HOME}"
-		doexe "${BUILD_DIR}"/dist/bin/gfxtest
+		doexe "${BUILD_DIR}"/dist/bin/vaapitest
+		doexe "${BUILD_DIR}"/dist/bin/vulkantest
+
+		# Install the v4l2test on supported arches (+ arm, + riscv64 when keyworded)
+		if use arm64 ; then
+			exeinto "${MOZILLA_FIVE_HOME}"
+			doexe "${BUILD_DIR}"/dist/bin/v4l2test
+		fi
 	fi
 
 	if ! use gmp-autoupdate ; then
