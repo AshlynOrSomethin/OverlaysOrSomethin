@@ -218,6 +218,14 @@ CONFIGS: tuple[PackageConfig, ...] = (
         asset_pattern=r"^spotatui_(?P<version>[0-9.]+)-1_amd64\.deb$",
         distfile_name=lambda v: f"spotatui-{v}_amd64.deb",
     ),
+    PackageConfig(
+        package_name="dux-files",
+        category="x11-misc",
+        directory="x11-misc/dux-files",
+        repo="duxlabs-dev/dux-files",
+        asset_pattern=r"^dfiles-(?P<version>[0-9.]+)\.tar\.gz$",
+        distfile_name=lambda v: f"dux-files-{v}.tar.gz",
+    ),
 )
 
 

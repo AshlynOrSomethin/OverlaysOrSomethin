@@ -81,6 +81,7 @@ Currently automated package updates:
 - `games-action/lunarclient`
 - `app-editors/fresh-editor`
 - `media-sound/spotatui`
+- `x11-misc/dux-files` (source build from the vendored release tarball)
 - `www-client/firefox` (source mirror for `:esr` and `:rapid`)
 
 Run manually in CI:
@@ -110,6 +111,7 @@ The updater currently auto-version/manifests these packages:
 - `games-action/lunarclient`
 - `app-editors/fresh-editor`
 - `media-sound/spotatui`
+- `x11-misc/dux-files` (source build from the vendored release tarball)
 - `www-client/firefox` (source mirror for `:esr` and `:rapid`)
 
 For local custom Firefox patches, use Portage user patches:
