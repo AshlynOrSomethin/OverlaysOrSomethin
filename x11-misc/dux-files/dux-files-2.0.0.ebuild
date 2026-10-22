@@ -1,6 +1,6 @@
 EAPI=8
 
-inherit go-module optfeature shell-completion systemd xdg
+inherit desktop go-module optfeature shell-completion systemd xdg
 
 DESCRIPTION="File manager for the dux desktop, built with Quickshell and Go"
 HOMEPAGE="https://github.com/duxlabs-dev/dux-files"
@@ -37,6 +37,10 @@ src_compile() {
 }
 
 src_test() {
+  # The D-Bus tests put a socket under t.TempDir(); Portage's TMPDIR is deep
+  # enough to push it past the 107 byte sun_path limit and dbus-daemon dies
+  local -x TMPDIR=/tmp
+
   # Racy upstream fixture: the entry index is invalidated by directory mtime,
   # so .desktop files written within one kernel timestamp tick are missed
   CGO_ENABLED=0 ego test -mod=vendor -skip TestSectionsCapsRecentAtFive ./...
