@@ -5,7 +5,10 @@ inherit go-module optfeature shell-completion systemd xdg
 DESCRIPTION="File manager for the dux desktop, built with Quickshell and Go"
 HOMEPAGE="https://github.com/duxlabs-dev/dux-files"
 SRC_URI="https://github.com/duxlabs-dev/dux-files/releases/download/v${PV}/dfiles-${PV}.tar.gz -> ${P}.tar.gz"
-S="${WORKDIR}/dfiles-${PV}"
+
+# go.mod and the vendor directory live in core/, which go-module.eclass expects in ${S}
+TOP="${WORKDIR}/dfiles-${PV}"
+S="${TOP}/core"
 
 # dux-files is MIT, the rest is the vendored Go modules shipped in the release tarball
 LICENSE="MIT Apache-2.0 BSD BSD-2 ISC MPL-2.0"
@@ -22,9 +25,8 @@ BDEPEND=">=dev-lang/go-1.27"
 
 src_compile() {
   # Copies the Quickshell UI into core/internal/shellembed/dist for go:embed
-  emake -C core sync-shell
+  emake sync-shell
 
-  cd core || die
   CGO_ENABLED=0 ego build -mod=vendor -tags withshell -trimpath \
     -ldflags "-X main.Version=${PV}" \
     -o dfiles ./cmd/dfiles
@@ -35,37 +37,36 @@ src_compile() {
 }
 
 src_test() {
-  cd core || die
   # Racy upstream fixture: the entry index is invalidated by directory mtime,
   # so .desktop files written within one kernel timestamp tick are missed
   CGO_ENABLED=0 ego test -mod=vendor -skip TestSectionsCapsRecentAtFive ./...
 }
 
 src_install() {
-  dobin core/dfiles
+  dobin dfiles
 
-  newbashcomp core/dfiles.bash dfiles
-  dozshcomp core/_dfiles
-  dofishcomp core/dfiles.fish
+  newbashcomp dfiles.bash dfiles
+  dozshcomp _dfiles
+  dofishcomp dfiles.fish
 
-  domenu assets/dev.duxlabs.files.desktop
-  doicon -s scalable assets/dev.duxlabs.files.svg
+  domenu "${TOP}/assets/dev.duxlabs.files.desktop"
+  doicon -s scalable "${TOP}/assets/dev.duxlabs.files.svg"
 
   insinto /usr/share/metainfo
-  doins assets/dev.duxlabs.files.metainfo.xml
+  doins "${TOP}/assets/dev.duxlabs.files.metainfo.xml"
 
   insinto /usr/share/polkit-1/actions
-  doins assets/dev.duxlabs.files.policy
+  doins "${TOP}/assets/dev.duxlabs.files.policy"
 
   # org.freedesktop.FileManager1 and the portal file chooser backend
   insinto /usr/share/dbus-1/services
-  doins assets/dbus/*.service
+  doins "${TOP}"/assets/dbus/*.service
   insinto /usr/share/xdg-desktop-portal/portals
-  doins assets/portal/dfiles.portal
+  doins "${TOP}/assets/portal/dfiles.portal"
 
-  use systemd && systemd_douserunit assets/systemd/dfiles.service
+  use systemd && systemd_douserunit "${TOP}/assets/systemd/dfiles.service"
 
-  dodoc README.md CHANGELOG.md
+  dodoc "${TOP}"/README.md "${TOP}"/CHANGELOG.md
 }
 
 pkg_postinst() {
