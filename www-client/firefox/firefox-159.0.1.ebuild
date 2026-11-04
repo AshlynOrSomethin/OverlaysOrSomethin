@@ -3,13 +3,13 @@
 
 EAPI=8
 
-FIREFOX_PATCHSET="firefox-153esr-patches-04.tar.xz"
+FIREFOX_PATCHSET="firefox-159-patches-02.tar.xz"
 
 LLVM_COMPAT=( 22 23 )
 
 # This will also filter rust versions that don't match LLVM_COMPAT in the non-clang path; this is fine.
 RUST_NEEDS_LLVM=1
-RUST_MIN_VER=1.90.0
+RUST_MIN_VER=1.91.0
 
 PYTHON_COMPAT=( python3_{12..14} )
 PYTHON_REQ_USE="ncurses,sqlite,ssl"
@@ -21,7 +21,7 @@ VIRTUALX_REQUIRED="manual"
 WASI_SDK_VER=34.0
 WASI_SDK_LLVM_VER=23
 
-MOZ_ESR=yes
+MOZ_ESR=
 
 MOZ_PV=${PV}
 MOZ_PV_SUFFIX=
@@ -72,14 +72,14 @@ SRC_URI="${MOZ_SRC_BASE_URI}/source/${MOZ_P}.source.tar.xz -> ${MOZ_P_DISTFILES}
 
 S="${WORKDIR}/${PN}-${PV%_*}"
 LICENSE="MPL-2.0 GPL-2 LGPL-2.1"
-KEYWORDS="amd64 arm64 ~loong ~ppc64 ~riscv ~x86"
+KEYWORDS="~amd64 ~arm64 ~loong ~ppc64 ~riscv ~x86"
 
 IUSE="+clang dbus debug eme-free hardened hwaccel jack libproxy pgo pulseaudio selinux sndio"
 IUSE+=" +system-av1 +system-harfbuzz +system-icu +system-jpeg +system-libevent +system-libvpx"
 IUSE+=" system-pipewire system-png +system-webp test wayland wifi +X"
 
 # Firefox-only IUSE
-IUSE+=" +gmp-autoupdate gnome-shell jpegxl +jumbo-build openh264 +telemetry valgrind wasm-sandbox"
+IUSE+=" +gmp-autoupdate gnome-shell +jumbo-build openh264 +telemetry valgrind wasm-sandbox"
 
 REQUIRED_USE="|| ( X wayland )
 	debug? ( !system-av1 )
@@ -106,7 +106,7 @@ BDEPEND="${PYTHON_DEPS}
 	app-arch/unzip
 	app-arch/zip
 	>=dev-util/cbindgen-0.29.4
-	net-libs/nodejs
+	net-libs/nodejs[ssl]
 	virtual/pkgconfig
 	amd64? ( >=dev-lang/nasm-2.14 )
 	x86? ( >=dev-lang/nasm-2.14 )
@@ -125,7 +125,7 @@ COMMON_DEPEND="${FF_ONLY_DEPEND}
 	>=app-accessibility/at-spi2-core-2.46.0:2
 	dev-libs/glib:2
 	dev-libs/libffi:=
-	>=dev-libs/nss-3.125
+	>=dev-libs/nss-3.132
 	>=dev-libs/nspr-4.39
 	media-libs/alsa-lib
 	media-libs/fontconfig
@@ -153,8 +153,8 @@ COMMON_DEPEND="${FF_ONLY_DEPEND}
 	selinux? ( sec-policy/selinux-mozilla )
 	sndio? ( >=media-sound/sndio-1.8.0-r1 )
 	system-av1? (
-		>=media-libs/dav1d-1.5.3:=
-		>=media-libs/libaom-3.12.1:=
+		>=media-libs/dav1d-1.5.4:=
+		>=media-libs/libaom-3.14.1:=
 	)
 	system-harfbuzz? (
 		>=media-libs/harfbuzz-2.8.1:0=
@@ -502,10 +502,6 @@ src_unpack() {
 }
 
 src_prepare() {
-	if [[ ${use_lto} == "yes" ]]; then
-		rm -v "${WORKDIR}"/firefox-patches/*-LTO-Only-enable-LTO-*.patch || die
-	fi
-
 	# Workaround for bgo#915651 and bmo#1988166 on musl
 	if use elibc_glibc ; then
 		rm -v "${WORKDIR}"/firefox-patches/*bgo-748849-RUST_TARGET_override.patch || die
@@ -515,6 +511,13 @@ src_prepare() {
 	eapply "${WORKDIR}/firefox-patches"
 
 	# Allow user to apply any additional patches without modifying ebuild
+	if [[ ! -f "/etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch" ]]; then
+		if ! nonfatal eapply "${FILESDIR}/firefox-audio-software-volume.patch"; then
+			ewarn "Bundled software-volume patch no longer applies cleanly."
+			ewarn "Place an updated patch at /etc/portage/patches/${CATEGORY}/${PN}/software-volume.patch to override."
+		fi
+	fi
+
 	eapply_user
 
 	# Make cargo respect MAKEOPTS
@@ -588,6 +591,7 @@ src_prepare() {
 
 	# Clear checksums from cargo crates we've manually patched.
 	# moz_clear_vendor_checksums xyz
+	moz_clear_vendor_checksums bindgen
 
 	# Respect choice for "jumbo-build"
 	# Changing the value for FILES_PER_UNIFIED_FILE may not work, see #905431
@@ -710,7 +714,6 @@ src_configure() {
 		--disable-parental-controls \
 		--disable-strip \
 		--disable-updater \
-		--disable-wmf \
 		--enable-negotiateauth \
 		--enable-new-pass-manager \
 		--enable-official-branding \
@@ -757,7 +760,6 @@ src_configure() {
 	# riscv-related options, bgo#947337, bgo#947338, bgo#977845
 	if use riscv ; then
 		mozconfig_add_options_ac 'Disable webrtc for RISC-V' --disable-webrtc
-		mozconfig_add_options_ac 'Disable JIT for RISC-V' --disable-jit
 	fi
 
 	mozconfig_use_enable valgrind
@@ -817,6 +819,7 @@ src_configure() {
 
 	mozconfig_use_enable dbus
 	mozconfig_use_enable libproxy
+	mozconfig_use_enable jumbo-build unified-build
 
 	use eme-free && mozconfig_add_options_ac '+eme-free' --disable-eme
 
@@ -839,8 +842,6 @@ src_configure() {
 
 	mozconfig_use_enable wifi necko-wifi
 
-	! use jumbo-build && mozconfig_add_options_ac '--disable-unified-build' --disable-unified-build
-
 	if use X && use wayland ; then
 		mozconfig_add_options_ac '+x11+wayland' --enable-default-toolkit=cairo-gtk3-x11-wayland
 	elif ! use X && use wayland ; then
@@ -857,8 +858,6 @@ src_configure() {
 		mozconfig_add_options_ac 'no wasm-sandbox' --without-wasm-sandboxed-libraries
 		mozconfig_use_with system-harfbuzz system-graphite2
 	fi
-
-	! use jpegxl && mozconfig_add_options_ac '-jpegxl' --disable-jxl
 
 	if [[ ${use_lto} == "yes" ]] ; then
 		if use clang ; then
@@ -1137,7 +1136,7 @@ src_install() {
 
 	# Force hwaccel prefs if USE=hwaccel is enabled
 	if use hwaccel ; then
-		cat "${FILESDIR}"/gentoo-hwaccel-prefs.js-r4 \
+		cat "${FILESDIR}"/gentoo-hwaccel-prefs.js-r6 \
 		>>"${GENTOO_PREFS}" \
 		|| die "failed to add prefs to force hardware-accelerated rendering to all-gentoo.js"
 
@@ -1151,16 +1150,9 @@ src_install() {
 			EOF
 		fi
 
-		# Install the vaapitest binary on supported arches (122.0 supports all platforms, bmo#1865969)
+		# Install the gfxtest binary on supported arches
 		exeinto "${MOZILLA_FIVE_HOME}"
-		doexe "${BUILD_DIR}"/dist/bin/vaapitest
-		doexe "${BUILD_DIR}"/dist/bin/vulkantest
-
-		# Install the v4l2test on supported arches (+ arm, + riscv64 when keyworded)
-		if use arm64 ; then
-			exeinto "${MOZILLA_FIVE_HOME}"
-			doexe "${BUILD_DIR}"/dist/bin/v4l2test
-		fi
+		doexe "${BUILD_DIR}"/dist/bin/gfxtest
 	fi
 
 	if ! use gmp-autoupdate ; then
@@ -1184,6 +1176,14 @@ src_install() {
 	# options stop working.
 	if ! use telemetry ; then
 		cat "${FILESDIR}"/gentoo-telemetry-prefs.js >>"${GENTOO_PREFS}" || die "failed to set telemetry prefs"
+
+		# When not building "official" copy of Firefox, ie when building with '-telemetry' use flag, these
+		# prefs are turned on causing verbose messaging in sysjournal. Guard these prefs behind 'telemetry'
+		# use flag so they get enabled for '+debug' builds correctly. # bgo#956677
+		cat >>"${GENTOO_PREFS}" <<-EOF || die "failed to set non-official debug prefs"
+		sticky_pref("browser.dom.window.dump.enabled", false);
+		sticky_pref("devtools.console.stdout.chrome", false);
+		EOF
 	fi
 
 	# Install icons
@@ -1259,12 +1259,6 @@ src_install() {
 		# Update prefs to enable Gnome search provider
 		cat >>"${GENTOO_PREFS}" <<-EOF || die "failed to enable gnome-search-provider via prefs"
 		pref("browser.gnome-search-provider.enabled", true);
-		EOF
-	fi
-
-	if use jpegxl ; then
-		cat >>"${GENTOO_PREFS}" <<-EOF || die "failed to enable jpegxl via pref"
-		pref("image.jxl.enabled", true);
 		EOF
 	fi
 
